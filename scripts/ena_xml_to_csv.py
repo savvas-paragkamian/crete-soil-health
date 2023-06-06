@@ -84,7 +84,7 @@ for filename in os.listdir(xml_dir):
         data.append(xml_data)
 
 # Get the list of keys from the first dictionary in the data list
-fieldnames = ['TAG', 'VALUE', 'file']
+fieldnames = ['file','TAG', 'VALUE', 'UNITS']
 
 # Write the data to TSV file
 with open(output_file, 'w', newline='') as tsvfile:
@@ -105,14 +105,12 @@ with open(output_file, 'w', newline='') as tsvfile:
         # iterate the links of the xml and append the filename to the end
         for link in links:
 
-            link.append(filename)
-            writer.writerow(link)
+            writer.writerow([str(filename)] + link)
 
         # iterate the sample attributes of the xml and 
         # append the filename to the end
         for attrib in attribs:
 
-            attrib.append(filename)
-            writer.writerow(attrib)
+            writer.writerow([str(filename)] + attrib)
             
 print(f"Conversion complete. The TSV file '{output_file}' has been created.")
