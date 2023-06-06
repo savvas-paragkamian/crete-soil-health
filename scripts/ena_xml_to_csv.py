@@ -3,7 +3,7 @@
 ###############################################################################
 # script name: ena_xml_to_csv.py
 # developed by: Savvas Paragkamian
-# framework: ISD Crete
+# framework: ISD Crete 2016
 ###############################################################################
 # GOAL:
 # Aim of this script is to transform the xml available attributes from 
@@ -14,7 +14,6 @@
 import xml.etree.ElementTree as ET
 import csv
 import os,sys
-#import pandas as pd
 
 # Directory containing the XML files
 xml_dir = 'ena_samples_attr/'
@@ -46,7 +45,6 @@ def groub_xml_elements(xml_list,tag):
        else :
            temp_list.append(i.text)
 
-   attribs.append(temp_list)
    return(attribs)
 
 # Iterate over each XML file in the directory
@@ -86,30 +84,35 @@ for filename in os.listdir(xml_dir):
         data.append(xml_data)
 
 # Get the list of keys from the first dictionary in the data list
-fieldnames = ['filename', 'TAG', 'VALUE', 'UNITS']
+fieldnames = ['TAG', 'VALUE', 'file']
 
 # Write the data to TSV file
 with open(output_file, 'w', newline='') as tsvfile:
     writer = csv.writer(tsvfile, delimiter='\t')
     
     # Write the header
-    #writer.writeheader()
+    writer.writerow(fieldnames)
     
-    # Write the data rows
+    # Write the data rows per dictionary/file
     for dictionary in data:
         
-        for tags in dictionary:
+        #name the lists
+        filename = dictionary['filename']
+        title = dictionary['title']
+        links = dictionary['links']
+        attribs = dictionary['attributes']
 
-            if tags == 'filename':
-                filename = tags
+        # iterate the links of the xml and append the filename to the end
+        for link in links:
 
-            if tags == 
-         #   print(tags)
-                for item in dictionary[tags]:
-                    row = files['filename'] + "\t" + tags + "\t" + item + "\n"
-                    print(row)
-        #writer.writerows(data)
+            link.append(filename)
+            writer.writerow(link)
 
+        # iterate the sample attributes of the xml and 
+        # append the filename to the end
+        for attrib in attribs:
+
+            attrib.append(filename)
+            writer.writerow(attrib)
+            
 print(f"Conversion complete. The TSV file '{output_file}' has been created.")
-
-
