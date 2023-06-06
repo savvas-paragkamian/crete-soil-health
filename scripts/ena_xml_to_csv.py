@@ -25,7 +25,33 @@ output_file = 'ena_metadata/ena_isd_2016_attributes.tsv'
 # List to store the extracted data
 data = []
 
+# Function to extract xml elements paired with a leading tag.
+# for example the following children are in one list
+# (geographic location (depth), 5 cm, m)
+#          <SAMPLE_ATTRIBUTE>
+#               <TAG>geographic location (depth)</TAG>
+#               <VALUE>5 cm</VALUE>
+#               <UNITS>m</UNITS>
+#          </SAMPLE_ATTRIBUTE>
+def groub_xml_elements(xml_list,tag):
+   attribs = []
+   temp_list = []
+   for i in xml_list:
+       
+       if i.tag == tag:
+           temp_list = []
+           temp_list.append(i.text)
+           attribs.append(temp_list)
+
+       else :
+           temp_list.append(i.text)
+
+   attribs.append(temp_list)
+   return(attribs)
+
 # Iterate over each XML file in the directory
+# ENA has this structure of XML 
+# ['IDENTIFIERS', 'TITLE', 'SAMPLE_NAME', 'DESCRIPTION', 'SAMPLE_LINKS', 'SAMPLE_ATTRIBUTES']
 for filename in os.listdir(xml_dir):
     if filename.endswith('.xml'):
         # Parse the XML file
@@ -35,32 +61,36 @@ for filename in os.listdir(xml_dir):
         #pd_df = pd.read_xml(os.path.join(xml_dir, filename))
         #print(pd_df)
 
-        print(filename)
-        print(root)
-        print(root.tag)
-        for child in root.iter():
-            #print(child.tag)
-            #print(child.attrib)
-            print(child.text)
+        #print(filename)
+        #print(root)
+        #print(root.tag)
+        # this loop prints all the text of the xml, without any tags and with \n
+        # between.
+        #
+        #for child in root.iter():
+        #    print(child.tag)
+        #    print(child.attrib)
+        #    print(child.text)
 
-
-        print("end of loop")
         
         xml_elem = []
+        # here we store all the categories of the XML file
         for sample in root.findall("./SAMPLE/"):
             xml_elem.append(sample.tag)
-            print(sample.text)
-        
         
         title = []
         for titl in root.findall("./SAMPLE/TITLE"):
             title.append(titl.tag)
             title.append(titl.text)
         
-        
-        links = []
+
+        link_attributes = root.findall("./SAMPLE/SAMPLE_LINKS/SAMPLE_LINK/XREF_LINK/")
+        links = groub_xml_elements(link_attributes, "DB")
+        print(links)
+
+
         for link in root.findall("./SAMPLE/SAMPLE_LINKS/SAMPLE_LINK/XREF_LINK/"):
-            links.append(link.tag)
+            links.append(link.tag + "," + link.text)
             links.append(link.text)
         
         attribs = []
@@ -68,7 +98,14 @@ for filename in os.listdir(xml_dir):
             attribs.append(attrib.tag)
             attribs.append(attrib.text)
         
-        print(xml_elem, title, links, attribs)
+        sample_attr = root.findall("./SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE/")
+        attribs = groub_xml_elements(sample_attr, "TAG")
+    
+
+
+        #print(xml_elem, title, links, attribs)
+        #print(xml_elem)
+        sys.exit()
         #print(sample_attribute.attrib)
         # Loop all sentence in the xml
             #for opinion in sample_attribute.iter('Opinion'):
