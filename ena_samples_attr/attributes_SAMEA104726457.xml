@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SAMPLE_SET>
+<SAMPLE accession="SAMEA104726457" alias="117" center_name="INSTITUTE FOR GENOME SCIENCES, UNIVERSITY OF MARYLAND SCHOOL OF MEDICINE">
+     <IDENTIFIERS>
+          <PRIMARY_ID>SAMEA104726457</PRIMARY_ID>
+          <SECONDARY_ID>ERS2327840</SECONDARY_ID>
+          <EXTERNAL_ID namespace="BioSample">SAMEA104726457</EXTERNAL_ID>
+          <SUBMITTER_ID namespace="INSTITUTE FOR GENOME SCIENCES, UNIVERSITY OF MARYLAND SCHOOL OF MEDICINE">117</SUBMITTER_ID>
+     </IDENTIFIERS>
+     <TITLE>Crete soil metagenome</TITLE>
+     <SAMPLE_NAME>
+          <TAXON_ID>410658</TAXON_ID>
+          <SCIENTIFIC_NAME>soil metagenome</SCIENTIFIC_NAME>
+     </SAMPLE_NAME>
+     <DESCRIPTION>metagenome from Crete soil</DESCRIPTION>
+     <SAMPLE_LINKS>
+    <SAMPLE_LINK>
+        <XREF_LINK>
+            <DB>ENA-EXPERIMENT</DB>
+            <ID>ERX3687308</ID>
+        </XREF_LINK>
+    </SAMPLE_LINK>
+    <SAMPLE_LINK>
+        <XREF_LINK>
+            <DB>ENA-RUN</DB>
+            <ID>ERR3697768</ID>
+        </XREF_LINK>
+    </SAMPLE_LINK>
+    <SAMPLE_LINK>
+        <XREF_LINK>
+            <DB>ENA-SUBMISSION</DB>
+            <ID>ERA2304079</ID>
+        </XREF_LINK>
+    </SAMPLE_LINK>
+    <SAMPLE_LINK>
+        <XREF_LINK>
+            <DB>ENA-FASTQ-FILES</DB>
+            <ID><![CDATA[https://www.ebi.ac.uk/ena/portal/api/filereport?accession=ERS2327840&result=read_run&fields=run_accession,fastq_ftp,fastq_md5,fastq_bytes]]></ID>
+        </XREF_LINK>
+    </SAMPLE_LINK>
+    <SAMPLE_LINK>
+        <XREF_LINK>
+            <DB>ENA-SUBMITTED-FILES</DB>
+            <ID><![CDATA[https://www.ebi.ac.uk/ena/portal/api/filereport?accession=ERS2327840&result=read_run&fields=run_accession,submitted_ftp,submitted_md5,submitted_bytes,submitted_format]]></ID>
+        </XREF_LINK>
+    </SAMPLE_LINK>
+    <SAMPLE_LINK>
+        <XREF_LINK>
+            <DB>ENA-STUDY</DB>
+            <ID>ERP024063</ID>
+        </XREF_LINK>
+    </SAMPLE_LINK>
+</SAMPLE_LINKS>
+<SAMPLE_ATTRIBUTES>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>geographic location (depth)</TAG>
+               <VALUE>5 cm</VALUE>
+               <UNITS>m</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>DNA concentration</TAG>
+               <VALUE>18.7</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>environment (material)</TAG>
+               <VALUE>soil</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>sample volume or weight for DNA extraction</TAG>
+               <VALUE>0.2555</VALUE>
+               <UNITS>g</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>source material identifiers</TAG>
+               <VALUE>isd_8_site_1_loc_1</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>collection date</TAG>
+               <VALUE>2016-06-15T11:12</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>current land use (emp 500 soil)</TAG>
+               <VALUE>sand; road</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>target gene</TAG>
+               <VALUE>16S rRNA</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>geographic location (longitude)</TAG>
+               <VALUE>24.63889</VALUE>
+               <UNITS>DD</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>geographic location (elevation)</TAG>
+               <VALUE>14</VALUE>
+               <UNITS>m</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>total nitrogen</TAG>
+               <VALUE>0.7</VALUE>
+               <UNITS>Âµg/L</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>storage conditions (fresh/frozen/other)</TAG>
+               <VALUE>dry ice during sample and transport, storage -80 freezer</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>water content</TAG>
+               <VALUE>4.692</VALUE>
+               <UNITS>cm3/cm3</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>soil environmental package</TAG>
+               <VALUE>soil</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>environment (biome)</TAG>
+               <VALUE>terrestrial biome</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>water content method</TAG>
+               <VALUE>DOI:10.2136/sssabookser5.1.2ed.c21</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>environment (feature)</TAG>
+               <VALUE>microcontinental island</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>total organic carbon</TAG>
+               <VALUE>46.5</VALUE>
+               <UNITS>g/kg</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>geographic location (country and/or sea)</TAG>
+               <VALUE>Greece</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>ENA-CHECKLIST</TAG>
+               <VALUE>ERC000022</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>amount or size of sample collected</TAG>
+               <VALUE>50</VALUE>
+               <UNITS>L</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>organism</TAG>
+               <VALUE>soil metagenome</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>sample collection device or method</TAG>
+               <VALUE>15x2.2 cm metal soil core sampler</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>geographic location (latitude)</TAG>
+               <VALUE>35.40972</VALUE>
+               <UNITS>DD</UNITS>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>common name</TAG>
+               <VALUE>soil metagenome</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>target subfragment</TAG>
+               <VALUE>V3, V4</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>geographic location (region and locality)</TAG>
+               <VALUE>Crete, Rethimno</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>investigation type</TAG>
+               <VALUE>metagenome</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>pcr primers</TAG>
+               <VALUE>FWD: 5'-ACTCCTACGGGAGGCAGCAG-3' REV: 5'-GGACTACHVGGGTWTCTAAT-3'</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>place name</TAG>
+               <VALUE>Spilies Beach/Geropotamos</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>total organic C method</TAG>
+               <VALUE>DOI:10.1080/00103629309368926</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>total nitrogen method</TAG>
+               <VALUE>DOI: 10.1080/0010362930936892</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>project name</TAG>
+               <VALUE>CRETE_SOIL: 16S amplicon sequences of Crete soil meta genomes</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>sequencing method</TAG>
+               <VALUE>Illumina HiSeq 2500</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>vegetation zone</TAG>
+               <VALUE>coastal and littoral</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>ENA-FIRST-PUBLIC</TAG>
+               <VALUE>2019-12-03</VALUE>
+          </SAMPLE_ATTRIBUTE>
+          <SAMPLE_ATTRIBUTE>
+               <TAG>ENA-LAST-UPDATE</TAG>
+               <VALUE>2018-03-29</VALUE>
+          </SAMPLE_ATTRIBUTE>
+     </SAMPLE_ATTRIBUTES>
+</SAMPLE>
+</SAMPLE_SET>
