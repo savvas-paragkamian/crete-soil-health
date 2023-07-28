@@ -14,18 +14,21 @@
 library(dada2,lib.loc="/home1/s.paragkamian/software/R/4.1.1")
 
 #faf
-seqtab.nochim<-readRDS("/home1/s.paragkamian/isd-crete/Crete/all_runs_dada2_abundance_table.rds")
+#seqtab.nochim<-readRDS("/home1/s.paragkamian/isd-crete/Crete/all_runs_dada2_abundance_table.rds")
 
 #seqtab.nochim<- seqtab.nochim[,1:1000]
 
-print("test data initiated.")
-taxa <- assignTaxonomy(seqtab.nochim,
-                       "/home1/s.paragkamian/databases/SILVA_138_SSU/silva_nr99_v138.1_wSpecies_train_set.fa",
-                       multithread=20,
-                       tryRC = TRUE, 
-                       verbose = T)
+#taxa <- assignTaxonomy(seqtab.nochim,
+#                       "/home1/s.paragkamian/databases/SILVA_138_SSU/silva_nr99_v138.1_wSpecies_train_set.fa",
+#                       multithread=20,
+#                       tryRC = TRUE, 
+#                       verbose = T)
 
-print("assignTaxonomy done.")
+#print("assignTaxonomy done.")
+print("load taxonomy")
+
+taxa <- readRDS("/home1/s.paragkamian/isd-crete/output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
+
 taxa <- addSpecies(taxa,
                    "/home1/s.paragkamian/databases/SILVA_138_SSU/silva_species_assignment_v138.1.fa",
                    tryRC = TRUE)
@@ -33,5 +36,5 @@ taxa <- addSpecies(taxa,
 print("addSpeciesdone.")
 
 print("begin saving data.")
-saveRDS(taxa, "/home1/s.paragkamian/isd-crete/output/dada2_taxa.RDS")
-print("data saved. \n")
+saveRDS(taxa, "/home1/s.paragkamian/isd-crete/output/dada2_taxa_species.RDS")
+print("data saved.")
