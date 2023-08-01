@@ -1,9 +1,9 @@
 #!/bin/bash -l
 
-#SBATCH --partition=batch
+#SBATCH --partition=fat
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=20
-#SBATCH --mem=100G
+#SBATCH --mem=400G
 #SBATCH --job-name="isd-species"
 #SBATCH --mail-user=s.paragkamian@hcmr.gr
 #SBATCH -o slurm.%N.%j.out # STDOUT
@@ -15,7 +15,6 @@ start=`date +%s`
 module purge # unloads all previous loads
 
 module load  R/4.1.1 #loads  R/4.1.1
-
 /home1/s.paragkamian/isd-crete/scripts/dada2_taxonomy.R
 
 module purge
