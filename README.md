@@ -21,7 +21,7 @@ visit the [website](https://lab42open-team.github.io/isd-crete-website/).
 The sequences of the ISD Crete 2016 are uploaded to ENA project[PRJEB21776](https://www.ebi.ac.uk/ena/browser/view/PRJEB21776)
 
 ## Taxonomic assignement
-
+We used PEMA and DADA2 for the clustering of OTUs and ASVs, respectively.
 
 ## Sampling metadata
 
