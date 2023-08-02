@@ -12,11 +12,22 @@ master_metadata <- read.delim("../dada2_output/Composite_MetaData_from_master.cs
 # summary
 
 # transform the matrices to long tables for stats
+
+## this is for the species exact matching results from DADA2 addSpecies function
+species <- data.frame(genus = species_asv[,6], species = species_asv[,8]) %>% 
+    rownames_to_column("asv") %>%
+    mutate(speciesname = paste(genus, species,sep=" "))# %>%
+    group_by(speciesname) %>%
+    summarise(n=n())
+
+## the abundance matrix has all the biodiverstity information
+## sampleID, ASV and abundance. NOTE that contains many zeros!!!
 abundance_asv_l <- abundance_asv %>% 
     data.frame() %>%
     rownames_to_column("sampleID") %>%
     pivot_longer(!sampleID, names_to = "asv", values_to = "abundance")
 
+## the taxonomy matrix has all the taxonomic information of each ASV
 taxa_asv_l <- taxa_asv %>% 
     data.frame() %>%
     rownames_to_column("asv") %>%
@@ -36,19 +47,33 @@ taxa_asv_l_filter <- taxa_asv_l %>%
                                             collapse = "|"), 
               scientificName_all = paste0(scientificName,
                                        collapse = "|")) %>%
-#    mutate(scientificName = str_split(scientificName_all, "|", n=1, simplify=T)) %>%
-#    mutate(scientificName=tail(strsplit(scientificName_all, split="\\|")[[1]],1)) %>%
-#    mutate(scientificName = sub('^.*\\|([[:alnum:]]+)$', '\\1', scientificName_all)) %>%
     ungroup()
 
-#taxa_asv_l_filter$scientificName <- sapply(tail(strsplit(taxa_asv_l_filter$scientificName_all, split="\\|")[[1]],1))
+# this function keeps the last occurrence of a string separated by |
+keep_last <- function(x) tail(strsplit(x, split="\\|")[[1]],1)
+# keep the lowest taxonomic inforfation per ASV
+taxa_asv_l_filter$scientificName <- sapply(taxa_asv_l_filter$scientificName_all,
+                                           keep_last,
+                                           simplify = T, USE.NAMES=F)
 
-species <- data.frame(genus = species_asv[,6], species = species_asv[,8]) %>% 
-    rownames_to_column("asv") %>%
-    mutate(speciesname = paste(genus, species,sep=" "))# %>%
-    group_by(speciesname) %>%
-    summarise(n=n())
+taxa_asv_l_filter$classification <- sapply(taxa_asv_l_filter$higherClassification,
+                                           keep_last,
+                                           simplify = T, USE.NAMES=F)
 
-##
+# merge abundance and taxonomy
+
+crete_biodiversity <- abundance_asv_l %>%
+    left_join(taxa_asv_l_filter,by=c("asv"="asv"))
+
+
+# Descriptives
 table(taxa_asv_l$Classification_levels)
 table(taxa_asv_l$Classification_levels, taxa_asv_l$higherClassification)
+
+## taxonomic diversity per sample
+
+crete_biodiversity_s <- crete_biodiversity %>% 
+    filter(abundance>10) %>%
+    group_by(sampleID, classification) %>% 
+    summarise(n_taxa=n(), .groups="keep")
+
