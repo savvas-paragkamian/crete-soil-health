@@ -7,20 +7,28 @@ library(ggpubr)
 library(sf)
 library(jpeg)
 library(raster)
+library(scales)
 
 # load data
-locations_spatial <- read_delim("../data/ISD_sites_coordinates.tsv", delim="\t",col_names=T) %>%
+## biodiversity
+
+asv_sample_dist <- read_delim("../results/asv_sample_dist.tsv",delim="\t")
+
+
+
+## spatial
+locations_spatial <- read_delim("../spatial_data/ISD_sites_coordinates.tsv", delim="\t",col_names=T) %>%
     st_as_sf(coords=c("longitude", "latitude"),
              remove=F,
              crs="WGS84")
-crete_shp <- sf::st_read("../data/crete/crete.shp")
-crete_peaks <- read_delim("../data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
+crete_shp <- sf::st_read("../spatial_data/crete/crete.shp")
+crete_peaks <- read_delim("../spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
     st_as_sf(coords=c("X", "Y"),
              remove=F,
              crs="WGS84")
 
 # raster DEM hangling
-dem_crete <- raster("../data/dem_crete/dem_crete.tif")
+dem_crete <- raster("../spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
@@ -83,4 +91,28 @@ ggsave("../figures/fig1.png",
        dpi = 600,
        units="cm",
        device="png")
+
+# Biodiversity statistics
+
+## ASVs
+asv_sample_dist_plot <- ggplot() +
+    geom_point(asv_sample_dist,
+               mapping=aes(x=n_asv, y=n_samples)) +
+    scale_y_continuous(breaks=seq(0,150,10), name="Number of samples") +
+    scale_x_continuous(trans='log10', name = "ASVs",
+                     breaks=trans_breaks('log10', function(x) 10^x),
+                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.88, 0.1))
+
+ggsave("../figures/fig_asv_n_samples.png",
+       plot=asv_sample_dist_plot,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
 

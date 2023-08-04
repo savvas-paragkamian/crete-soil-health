@@ -2,6 +2,7 @@
 
 library(vegan)
 library(tidyverse)
+library(scales)
 
 # Load data
 abundance_asv <- readRDS("../dada2_output/all_runs_dada2_abundance_table.rds")
@@ -98,7 +99,18 @@ write_delim(asv_sample_dist,"../results/asv_sample_dist.tsv",delim="\t")
 crete_biodiversity_s <- crete_biodiversity %>% 
     filter(abundance>10, !is.na(classification)) %>%
     group_by(sampleID, classification) %>% 
-    summarise(n_taxa=n(), .groups="keep")
+    summarise(n_taxa=n(), .groups="keep") %>%
+    pivot_wider(names_from=classification,values_from=n_taxa)
+
+write_delim(crete_biodiversity_s,
+            "../results/crete_biodiversity_sample_taxonomy.tsv",
+            delim="\t")
+summary(crete_biodiversity_s)
+
+### highest species biodiversity sample
+crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
+
+
 ## create bar plots for each sample at family level, class level, Phylum etc
 
 ## shannon per sample
