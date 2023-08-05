@@ -39,10 +39,10 @@ taxa_asv_l <- taxa_asv %>%
                  names_to = "higherClassification",
                  values_to = "scientificName") %>%
     na.omit("scientificName") %>%
-    group_by(asv) %>% 
     ungroup()
 
-taxa_asv_l_filter <- taxa_asv_l %>%
+
+taxa_asv_s <- taxa_asv_l %>%
     group_by(asv) %>%
     summarise(higherClassification = paste0(higherClassification,
                                             collapse = "|"), 
@@ -53,18 +53,24 @@ taxa_asv_l_filter <- taxa_asv_l %>%
 # this function keeps the last occurrence of a string separated by |
 keep_last <- function(x) tail(strsplit(x, split="\\|")[[1]],1)
 # keep the lowest taxonomic inforfation per ASV
-taxa_asv_l_filter$scientificName <- sapply(taxa_asv_l_filter$scientificName_all,
+taxa_asv_s$scientificName <- sapply(taxa_asv_s$scientificName_all,
                                            keep_last,
                                            simplify = T, USE.NAMES=F)
 
-taxa_asv_l_filter$classification <- sapply(taxa_asv_l_filter$higherClassification,
+taxa_asv_s$classification <- sapply(taxa_asv_s$higherClassification,
                                            keep_last,
                                            simplify = T, USE.NAMES=F)
 
+taxa_asv_all <- taxa_asv_l %>% 
+    pivot_wider(names_from=higherClassification, 
+                values_from=scientificName) %>% 
+    left_join(taxa_asv_s, by=c("asv"="asv"))
+
+    
 # merge abundance and taxonomy
 
 crete_biodiversity_all <- abundance_asv_l %>%
-    left_join(taxa_asv_l_filter,by=c("asv"="asv")) %>%
+    left_join(taxa_asv_all,by=c("asv"="asv")) %>%
     filter(abundance>0)
 
 ### remove the asvs that don't have a taxonomy
@@ -108,11 +114,23 @@ write_delim(crete_biodiversity_s,
 summary(crete_biodiversity_s)
 
 ### highest species biodiversity sample
+print("sample with the highest microbial species diversity")
 crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
+## Phyla distribution
 
+phyla_dist <- crete_biodiversity %>%
+    group_by(sampleID,Phylum) %>%
+    summarise(sum_abundance=sum(abundance), .groups="keep") %>%
+    na.omit(Phylum)
+
+total_phyla_dist <- phyla_dist %>% 
+    group_by(Phylum) %>%
+    summarise(sum_abundance=sum(sum_abundance),
+              n_samples=n()) %>%
+    mutate(sampleID="All samples") %>%
+    arrange(desc(n_samples))
 ## create bar plots for each sample at family level, class level, Phylum etc
-
 ## shannon per sample
 ## bray curtis per sample
 ## 
