@@ -59,7 +59,7 @@ crete_base <- ggplot() +
 #            show.legend=f) +
     geom_label(data = crete_peaks,
                mapping=aes(x = X, y = Y, label = name),
-               size = 1.5,
+               size = 1.8,
                nudge_x = 0.05,
                nudge_y=0.05,
                label.padding = unit(0.1, "lines"))+
@@ -75,7 +75,7 @@ crete_base <- ggplot() +
     theme_bw()+
     theme(axis.title=element_blank(),
           axis.text=element_text(colour="black"),
-          legend.text=element_text(size=5),
+          legend.text=element_text(size=8),
           legend.title = element_text(size=8),
           legend.position = "bottom",
           legend.box.background = element_blank())
@@ -85,7 +85,7 @@ ggsave("../figures/fig1a.tiff",
        plot=crete_base,
        height = 10,
        width = 20,
-       dpi = 600,
+       dpi = 300,
        units="cm",
        device="tiff")
 
@@ -93,7 +93,7 @@ ggsave("../figures/fig1a.png",
        plot=crete_base,
        height = 10,
        width = 20,
-       dpi = 600,
+       dpi = 300,
        units="cm",
        device="png")
 
@@ -140,14 +140,14 @@ crete_corine <- ggplot() +
           legend.title = element_blank(),
           legend.position = "bottom",
           legend.box.background = element_blank(),
-          legend.key.size = unit(6, "mm"), 
+          legend.key.size = unit(8, "mm"), 
           legend.text=element_text(size=8))
 
 ggsave("../figures/Fig1b.tiff", 
        plot=crete_corine, 
        height = 10, 
        width = 20,
-       dpi = 600, 
+       dpi = 300, 
        units="cm",
        device="tiff")
 
@@ -155,7 +155,7 @@ ggsave("../figures/Fig1b.png",
        plot=crete_corine, 
        height = 10, 
        width = 20,
-       dpi = 600, 
+       dpi = 300, 
        units="cm",
        device="png")
 
@@ -171,31 +171,31 @@ fig1 <- ggarrange(crete_base,crete_corine,
 
 ggsave("../figures/Fig1.tiff", 
        plot=fig1, 
-       height = 40, 
+       height = 30, 
        width = 30,
-       dpi = 600, 
+       dpi = 300, 
        units="cm",
        device="tiff")
 
 ggsave("../figures/Fig1.png", 
        plot=fig1, 
-       height = 40, 
+       height = 30, 
        width = 30,
-       dpi = 600, 
+       dpi = 300, 
        units="cm",
        device="png")
 
 ggsave("../figures/Fig1.pdf", 
        plot=fig1, 
-       height = 40, 
+       height = 30, 
        width = 30,
-       dpi = 600, 
+       dpi = 300, 
        units="cm",
        device="pdf")
 
 ggsave("../figures/Fig1-small.png", 
        plot=fig1, 
-       height = 40, 
+       height = 30, 
        width = 30,
        dpi = 300, 
        units="cm",
