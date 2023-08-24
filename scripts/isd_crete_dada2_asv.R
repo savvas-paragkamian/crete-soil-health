@@ -13,7 +13,7 @@
 ###############################################################################
 
 # packages
-library(dada2,lib.loc="/home1/s.paragkamian/software/R/4.1.1")
+library(dada2, lib.loc="/home1/s.paragkamian/software/R/4.1.1")
 
 # Working Environment
 # path of the sequences as retrieved from ENA
@@ -29,16 +29,26 @@ setwd(output_path)
 # sampleENAid_1.fastq.gz and sampleENAid_2.fastq.gz
 fnFs <- sort(list.files(path, pattern="_1.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_2.fastq", full.names = TRUE))
+
+################# REMOVE ################################
+#fnFs <- head(fnFs)
+#fnRs <- head(fnRs)
+################# REMOVE ################################
+
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 
-# 1. quality control
+print(paste0("Samples processing : ", length(sample.names)))
 
-if (!dir.exists("quality_plots")){
-    dir.create("quality_plots")
-    print("quality_plots directory created")
-} else{
-    print("dir exists")
+# 1. quality control
+create_dir <- function(dir_name){
+
+    if (!dir.exists(dir_name)){
+    dir.create(dir_name)
+    print(paste0(dir_name, " directory created", sep=""))
+    } else{
+        print(paste0(dir_name, " directory exists", sep=""))
+    }
 }
 # plots of the Phred score
 ## function to create individual plots for each file
@@ -56,21 +66,124 @@ quality_plots <- function(all_fn) {
     }
 }
 
+create_dir("quality_plots")
 all_fn <- c(fnFs,fnRs)
 quality_plots(all_fn)
-stop("Manual break inserted here")
+#stop("Manual break inserted here")
 
+# 2. filter and trim sequences
+print("start the filter and trim")
 
 # Place filtered files in filtered/ subdirectory
-filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
-names(filtFs) <- sample.names
-names(filtRs) <- sample.names
+create_dir("filtered")
+filtFs <- file.path(output_path,
+                    "filtered",
+                    paste0(sample.names, "_1_filt.fastq.gz"))
+filtRs <- file.path(output_path,
+                    "filtered",
+                    paste0(sample.names, "_2_filt.fastq.gz"))
 
-# filter and trim sequences
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
-              maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-              compress=TRUE, multithread=TRUE) 
-head(out)
+filtered <- filterAndTrim(fwd=fnFs, filt=filtFs,
+                     rev=fnRs, filt.rev=filtRs,
+                     truncLen=c(250,200),
+                     maxN=0,
+                     maxEE=c(2,2),
+                     truncQ=2,
+                     minLen=100,
+                     rm.phix=TRUE,
+                     compress=TRUE,
+                     multithread=TRUE,
+                     verbose=T)
 
-# 2.
+write.table(filtered,
+            paste0(output_path,"/filtered_summary.tsv", sep=""),
+            sep="\t",
+            col.names = TRUE)
+
+# 3. Learn errors
+
+print("learning errors")
+
+err_F <- learnErrors(filtFs,
+                      multithread=TRUE,
+                      verbose=1)
+
+err_R <- learnErrors(filtRs,
+                      multithread=TRUE,
+                      verbose=1)
+
+saveRDS(err_F, paste0(output_path,"/err_F.rds", sep=""))
+saveRDS(err_R, paste0(output_path,"/err_R.rds", sep=""))
+
+# 4. Sample Inferrence
+print("sample inference")
+dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
+dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
+
+# Merge pairs
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs,
+                      verbose=TRUE)
+
+seqtab <- makeSequenceTable(mergers)
+
+write.table(seqtab,
+            paste0(output_path,"/seqtab.tsv", sep=""),
+            sep="\t",
+            col.names = TRUE,
+            row.names=TRUE)
+
+# # Remove chimeras
+print("remove chimeras")
+seqtab.nochim <- removeBimeraDenovo(seqtab,
+                             method="consensus",
+                             multithread=TRUE)
+
+write.table(seqtab.nochim,
+            paste0(output_path,"/seqtab_nochim.tsv", sep=""),
+            sep="\t",
+            col.names = TRUE,
+            row.names=TRUE)
+## Summary
+
+getN <- function(x) sum(getUniques(x))
+
+track <- cbind(filtered, 
+               sapply(dadaFs, getN),
+               sapply(dadaRs, getN),
+               sapply(mergers, getN),
+               rowSums(seqtab.nochim))
+
+# If processing a single sample, remove the sapply calls: 
+# e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(track) <- sample.names
+
+write.table(track,
+            paste0(output_path,"/track_summary.tsv", sep=""),
+            sep="\t",
+            col.names = TRUE)
+
+# # Assign Taxonomy
+
+print("assign taxonomy")
+taxa <- assignTaxonomy(seqtab.nochim,
+                       "/home1/s.paragkamian/databases/SILVA_138_SSU/silva_nr99_v138.1_wSpecies_train_set.fa",
+                       multithread=20,
+                       tryRC = TRUE, 
+                       verbose = TRUE)
+
+print("assignTaxonomy done.")
+
+#taxa <- readRDS("/home1/s.paragkamian/isd-crete/output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
+
+# This function requires more than 250 gb of memory (RAM)!!
+taxa <- addSpecies(taxa,
+                   "/home1/s.paragkamian/databases/SILVA_138_SSU/silva_species_assignment_v138.1.fa",
+                   tryRC = TRUE)
+
+print("addSpecies done.")
+
+print("begin saving data.")
+saveRDS(taxa, "/home1/s.paragkamian/isd-crete/dada2_output/dada2_taxa_species.RDS")
+print("data saved.")
+stop("Manual break inserted here")
