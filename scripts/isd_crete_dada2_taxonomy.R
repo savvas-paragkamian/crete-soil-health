@@ -104,23 +104,54 @@ write.table(filtered,
 
 print("learning errors")
 
+create_dir("errors")
+
+set.seed(100)
+## Errors forward
 err_F <- learnErrors(filtFs,
                       multithread=TRUE,
+                      randomize=TRUE,
+                      MAX_CONSIST=20,
                       verbose=1)
 
+saveRDS(err_F, paste0(output_path,"/errors/err_F.rds", sep=""))
+
+g_errors_F <- plotErrors(err_F, nominalQ=TRUE)
+ggplot2::ggsave(plot=g_errors_F,
+                path="errors/",
+                filename = "g_errors_F.png",
+                device="png") 
+
+## Errors reverse
 err_R <- learnErrors(filtRs,
                       multithread=TRUE,
+                      randomize=TRUE,
+                      MAX_CONSIST=20,
                       verbose=1)
 
-saveRDS(err_F, paste0(output_path,"/err_F.rds", sep=""))
-saveRDS(err_R, paste0(output_path,"/err_R.rds", sep=""))
+saveRDS(err_R, paste0(output_path,"/errors/err_R.rds", sep=""))
+g_errors_R <- plotErrors(err_R, nominalQ=TRUE)
+ggplot2::ggsave(plot=g_errors_R,
+                path="errors/",
+                filename = "g_errors_R.png",
+                device="png") 
 
 # 4. Sample Inferrence
 print("sample inference")
-dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
-dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
+dadaFs <- dada(filtFs,
+               err=err_F,
+               multithread=TRUE)
 
+print("check convergence Fs")
+dada2:::checkConvergence(dadaFs[[1]])
+
+dadaRs <- dada(filtRs,
+               err=err_R,
+               multithread=TRUE)
+print("check convergence Rs")
+dada2:::checkConvergence(dadaRs[[1]])
 # Merge pairs
+print("merge pairs")
 mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs,
                       verbose=TRUE)
 
