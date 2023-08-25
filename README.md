@@ -16,9 +16,28 @@ visit the [website](https://lab42open-team.github.io/isd-crete-website/).
 ## Structure of the repository
 
 
-## Sequences
 
-The sequences of the ISD Crete 2016 are uploaded to ENA project[PRJEB21776](https://www.ebi.ac.uk/ena/browser/view/PRJEB21776)
+## Data
+
+The sequences of the ISD Crete 2016 are available in ENA project [PRJEB21776](https://www.ebi.ac.uk/ena/browser/view/PRJEB21776)
+and were downloaded using the ENA API. The script is available [here](scripts/get_isd_crete_2016_fastq.sh) for the
+raw data and [here](scripts/get_isd_crete_2016_attributes.py) for the metadata.
+The metadata are in `xml` format and using this [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/ena_xml_to_csv.py) we transform them to
+tabular format.
+
+## Reads summary
+
+In this [script](scripts/isd_crete_raw_data_summary.sh) there are some oneliners
+to provide some basic information regarding the reads.
+
+Total reads
+
+Primers
+
+Numbers of Ns in reads
+
+
+
 
 ## Taxonomic assignement
 We used PEMA and DADA2 for the clustering of OTUs and ASVs, respectively.
