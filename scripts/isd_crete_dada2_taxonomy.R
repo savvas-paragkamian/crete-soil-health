@@ -85,12 +85,12 @@ filtRs <- file.path(output_path,
 
 filtered <- filterAndTrim(fwd=fnFs, filt=filtFs,
                      rev=fnRs, filt.rev=filtRs,
-                     truncLen=c(250,200),
+                     truncLen=c(280,230),
                      maxN=0,
-                     maxEE=c(2,2),
+                     maxEE=2,
                      truncQ=2,
                      minLen=100,
-                     rm.phix=TRUE,
+#                     rm.phix=TRUE,
                      compress=TRUE,
                      multithread=TRUE,
                      verbose=T)
@@ -203,9 +203,8 @@ taxa <- assignTaxonomy(seqtab.nochim,
                        tryRC = TRUE, 
                        verbose = TRUE)
 
+saveRDS(taxa, "/home1/s.paragkamian/isd-crete/dada2_output/dada2_taxonomy.RDS")
 print("assignTaxonomy done.")
-
-#taxa <- readRDS("/home1/s.paragkamian/isd-crete/output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
 
 # This function requires more than 250 gb of memory (RAM)!!
 taxa <- addSpecies(taxa,
@@ -217,4 +216,4 @@ print("addSpecies done.")
 print("begin saving data.")
 saveRDS(taxa, "/home1/s.paragkamian/isd-crete/dada2_output/dada2_taxa_species.RDS")
 print("data saved.")
-stop("Manual break inserted here")
+#stop("Manual break inserted here")
