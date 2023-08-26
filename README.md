@@ -43,6 +43,12 @@ Numbers of Ns in reads
 ## Taxonomic assignement
 We used PEMA and DADA2 for the clustering of OTUs and ASVs, respectively.
 
+DADA2 for our dataset required a total of 1121 minutes (18 hours, 41 minutes)
+to run on a FAT node of the ZORBAS HPC - IMBBC - HCMR.
+
+FAT node Specs : Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz, 40 CPUs, 503gb RAM
+OS = Debian 4.19.146-1
+
 ## Sampling metadata
 
 ## Remote sensing data
