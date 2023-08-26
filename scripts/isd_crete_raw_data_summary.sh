@@ -16,11 +16,11 @@ echo "This script runs some commands to summarise reads."
 cd ../ena_data
 
 echo "Calculate number of reads"
-zcat *.fastq.gz | gawk 'BEGIN{RS="@" ; FS="\n"}{reads[$1]}END{print "total reads = " length(reads)}'
+zcat *.fastq.gz | gawk 'BEGIN{RS="@" ; FS="\n"}{reads[$1]=1}END{print "total reads = " length(reads)}'
 
 echo "Find the reads with primers, both forward and reverse"
 
-zcat *1.fastq.gz  | gawk 'BEGIN{RS="@" ; FS="\n"} {match($2,/ACTCCTACGGGAGGCAGCAG/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i]}}' > ../isd_crete_reads_1_primer_summary.tsv
+zcat *1.fastq.gz  | gawk 'BEGIN{RS="@" ; FS="\n"}{match($2,/ACTCCTACGGGAGGCAGCAG/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i]}}' > ../isd_crete_reads_1_primer_summary.tsv
 
 zcat *2.fastq.gz  | gawk 'BEGIN{RS="@" ; FS="\n"}{match($2,/GGACTACHVGGGTWTCTAAT/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i]}}' > ../isd_crete_reads_2_primer_summary.tsv
 

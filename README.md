@@ -30,9 +30,10 @@ tabular format.
 In this [script](scripts/isd_crete_raw_data_summary.sh) there are some oneliners
 to provide some basic information regarding the reads.
 
-Total reads
+Total reads (forward and reverse) = 121232490 in 140 samples
 
-Primers
+Primers used are FWD: 5'-ACTCCTACGGGAGGCAGCAG-3' REV: 5'-GGACTACHVGGGTWTCTAAT-3'
+
 
 Numbers of Ns in reads
 
