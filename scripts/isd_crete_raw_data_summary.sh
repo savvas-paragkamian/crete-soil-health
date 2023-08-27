@@ -59,16 +59,26 @@ PRIMER_1=${output}/isd_crete_reads_1_primer_summary.tsv
 PRIMER_2=${output}/isd_crete_reads_2_primer_summary.tsv
 Ns=${output}/isd_crete_reads_Ns-summary.tsv
 
-echo "Calculate number of reads"
-zcat *.fastq.gz | gawk 'BEGIN{RS="@" ; FS="\n"}{reads[$1]=1}END{print "total reads = " length(reads)}'
-
-echo "Find the reads with primers, both forward and reverse"
-zcat *.fastq.gz  | gawk 'BEGIN{RS="@" ; FS="\n"}{match($2,/ACTCCTACGGGAGGCAGCAG/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i]}}' > $PRIMER_1
-
-zcat *.fastq.gz  | gawk 'BEGIN{RS="@" ; FS="\n"}{match($2,/GGACTACHVGGGTWTCTAAT/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i]}}' > $PRIMER_1
-
-echo "Find how many reads have Ns and count them per sample"
-
-zcat *.fastq.gz |  gawk 'BEGIN{RS="@" ; FS="\n"}($2 ~ /N/){split($1,sample,".") ; count[sample[1]][gsub(/N/,"")]++ }END{print "sample" "\t" "N_of_Ns" "\t" "total_reads"; for (s in count){for (c in count[s]){print s "\t" c "\t" count[s][c]}}}' > $Ns
+zcat *.fastq.gz | gawk -v pr1=$PRIMER_1 -v pr2=$PRIMER_2 -v ns=$Ns 'BEGIN{RS="@" ; FS="\n"}{
+reads[$1]=1;
+match($2,/ACTCCTACGGGAGGCAGCAG/) ; a[RSTART]++ ; 
+match($2,/GGACTACHVGGGTWTCTAAT/) ; b[RSTART]++ ;
+if ($2 ~ /N/){split($1,sample,".") ; count[sample[1]][gsub(/N/,"")]++ }
+}END{print "total reads = " length(reads);
+print "Find the reads with primers, both forward and reverse";
+for (i in a){print i "\t" a[i] > pr1 };
+for (j in b){print j "\t" b[j] > pr2 };
+print "how many reads have Ns and count them per sample";
+print "sample" "\t" "N_of_Ns" "\t" "total_reads" > ns; for (s in count){for (c in count[s]){print s "\t" c "\t" count[s][c] >> ns}}}'
+########################## END ###############################################
+# The following oneliners are 2X slower because the same files are read 
+# 3 times
+#echo "Calculate number of reads"
+#zcat *.fastq.gz | gawk 'BEGIN{RS="@" ; FS="\n"}{reads[$1]=1}END{print "total reads = " length(reads)}'
+#echo "Find the reads with primers, both forward and reverse"
+#zcat *.fastq.gz  | gawk -v pr1=$PRIMER_1 'BEGIN{RS="@" ; FS="\n"}{match($2,/ACTCCTACGGGAGGCAGCAG/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i] > pr1 }}'
+#zcat *.fastq.gz  | gawk 'BEGIN{RS="@" ; FS="\n"}{match($2,/GGACTACHVGGGTWTCTAAT/) ; a[RSTART]++}END{for (i in a){print i "\t" a[i]}}' > $PRIMER_2
+#echo "Find how many reads have Ns and count them per sample"
+#zcat *.fastq.gz |  gawk 'BEGIN{RS="@" ; FS="\n"}($2 ~ /N/){split($1,sample,".") ; count[sample[1]][gsub(/N/,"")]++ }END{print "sample" "\t" "N_of_Ns" "\t" "total_reads"; for (s in count){for (c in count[s]){print s "\t" c "\t" count[s][c]}}}' > $Ns
 
 
