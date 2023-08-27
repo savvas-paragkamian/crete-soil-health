@@ -95,10 +95,10 @@ filtered <- filterAndTrim(fwd=fnFs, filt=filtFs,
                      multithread=TRUE,
                      verbose=T)
 
-write.table(filtered,
-            paste0(output_path,"/filtered_summary.tsv", sep=""),
-            sep="\t",
-            col.names = TRUE)
+#write.table(filtered,
+#            paste0(output_path,"/filtered_summary.tsv", sep=""),
+#            sep="\t",
+#            col.names = TRUE)
 
 # 3. Learn errors
 
@@ -138,6 +138,8 @@ ggplot2::ggsave(plot=g_errors_R,
 
 # 4. Sample Inferrence
 print("sample inference")
+create_dir("taxonomy")
+
 dadaFs <- dada(filtFs,
                err=err_F,
                multithread=TRUE)
@@ -158,7 +160,7 @@ mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs,
 seqtab <- makeSequenceTable(mergers)
 
 write.table(seqtab,
-            paste0(output_path,"/seqtab.tsv", sep=""),
+            paste0(output_path,"/taxonomy/seqtab.tsv", sep=""),
             sep="\t",
             col.names = TRUE,
             row.names=TRUE)
@@ -170,7 +172,7 @@ seqtab.nochim <- removeBimeraDenovo(seqtab,
                              multithread=TRUE)
 
 write.table(seqtab.nochim,
-            paste0(output_path,"/seqtab_nochim.tsv", sep=""),
+            paste0(output_path,"/taxonomy/seqtab_nochim.tsv", sep=""),
             sep="\t",
             col.names = TRUE,
             row.names=TRUE)
@@ -190,11 +192,12 @@ colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "n
 rownames(track) <- sample.names
 
 write.table(track,
-            paste0(output_path,"/track_summary.tsv", sep=""),
+            paste0(output_path,"/isd_crete_read_track_summary.tsv", sep=""),
             sep="\t",
             col.names = TRUE)
 
 # # Assign Taxonomy
+# Add your path to SILVA
 
 print("assign taxonomy")
 taxa <- assignTaxonomy(seqtab.nochim,
@@ -203,9 +206,10 @@ taxa <- assignTaxonomy(seqtab.nochim,
                        tryRC = TRUE, 
                        verbose = TRUE)
 
-saveRDS(taxa, "/home1/s.paragkamian/isd-crete/dada2_output/dada2_taxonomy.RDS")
+saveRDS(taxa, paste0(output_path,"/dada2_taxonomy.RDS", sep=""))
 print("assignTaxonomy done.")
 
+# Add your path to SILVA
 # This function requires more than 250 gb of memory (RAM)!!
 taxa <- addSpecies(taxa,
                    "/home1/s.paragkamian/databases/SILVA_138_SSU/silva_species_assignment_v138.1.fa",
@@ -214,6 +218,6 @@ taxa <- addSpecies(taxa,
 print("addSpecies done.")
 
 print("begin saving data.")
-saveRDS(taxa, "/home1/s.paragkamian/isd-crete/dada2_output/dada2_taxa_species.RDS")
+saveRDS(taxa, paste0(output_path,"/dada2_taxa_species.RDS", sep=""))
 print("data saved.")
 #stop("Manual break inserted here")
