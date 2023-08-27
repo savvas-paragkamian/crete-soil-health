@@ -4,12 +4,18 @@ library(vegan)
 library(tidyverse)
 library(scales)
 
-# Load data
-abundance_asv <- readRDS("../dada2_output/all_runs_dada2_abundance_table.rds")
-taxa_asv <- readRDS("../dada2_output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
-species_asv <- readRDS("../dada2_output/2023-07-31-dada2_taxa_species.RDS")
-master_metadata <- read.delim("../dada2_output/Composite_MetaData_from_master.csv", sep=",")
+# Load data old repo
+#abundance_asv <- readRDS("../dada2_output/all_runs_dada2_abundance_table.rds")
+#taxa_asv <- readRDS("../dada2_output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
+#species_asv <- readRDS("../dada2_output/2023-07-31-dada2_taxa_species.RDS")
+#master_metadata <- read.delim("../dada2_output/Composite_MetaData_from_master.csv", sep=",")
 
+# Load data
+abundance_asv <- read_delim("dada2_output/taxonomy/seqtab_nochim.tsv", delim="\t")
+taxa_asv <- readRDS("dada2_output/taxonomy/dada2_taxonomy.RDS")
+species_asv <- readRDS("dada2_output/taxonomy/dada2_taxa_species.RDS")
+metadata_long <- read_delim("ena_metadata/ena_isd_2016_attributes.tsv", delim="\t") %>%
+    mutate(VALUE=gsub("\\r(?!\\n)","", VALUE, perl=T))
 # summary
 
 # transform the matrices to long tables for stats
