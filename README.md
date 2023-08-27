@@ -34,15 +34,19 @@ Total reads (forward and reverse) = 121232490 in 140 samples
 
 Primers used are FWD: 5'-ACTCCTACGGGAGGCAGCAG-3' REV: 5'-GGACTACHVGGGTWTCTAAT-3'
 
-
-Numbers of Ns in reads
-
-
-
+Numbers of Ns in reads : there are many reads with Ns and the `dada` function
+doesn't accept so after the filtering they are all removed.
 
 ## Taxonomic assignement
 We used PEMA and DADA2 for the clustering of OTUs and ASVs, respectively.
 
+### PEMA
+
+PEMA incorporates state of the art tools for each step of the analysis.
+
+The filtering step is slower than DADA2 because of Trimmomatic.
+
+### DADA2
 DADA2 for our dataset required a total of 1121 minutes (18 hours, 41 minutes)
 to run on a FAT node of the ZORBAS HPC - IMBBC - HCMR.
 
