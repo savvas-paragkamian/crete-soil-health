@@ -65,9 +65,10 @@ match($2,/ACTCCTACGGGAGGCAGCAG/) ; a[RSTART]++ ;
 match($2,/GGACTACHVGGGTWTCTAAT/) ; b[RSTART]++ ;
 if ($2 ~ /N/){split($1,sample,".") ; count[sample[1]][gsub(/N/,"")]++ }
 }END{print "total reads = " length(reads);
-print "Find the reads with primers, both forward and reverse";
-for (i in a){print i "\t" a[i] > pr1 };
-for (j in b){print j "\t" b[j] > pr2 };
+print "Find the reads with primers, both forward and reverse. \
+The start position of the primer is the first column and the number of reads the second";
+print "start_position" "\t" "total_reads" > pr1; for (i in a){print i "\t" a[i] >> pr1 };
+print "start_position" "\t" "total_reads" > pr2; for (j in b){print j "\t" b[j] >> pr2 };
 print "how many reads have Ns and count them per sample";
 print "sample" "\t" "N_of_Ns" "\t" "total_reads" > ns; for (s in count){for (c in count[s]){print s "\t" c "\t" count[s][c] >> ns}}}'
 ########################## END ###############################################
