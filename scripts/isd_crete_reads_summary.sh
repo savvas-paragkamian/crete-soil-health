@@ -9,7 +9,7 @@
 # Aim of this script is to use basic command line tools to summarise the reads
 # from fastq.gz files of ISD Crete 2016
 ###############################################################################
-# usage:./isd_crete_raw_data_summary.sh -i ~/isd_crete/ena_data/ -o ~/isd_crete/output/
+# usage:./isd_crete_reads_summary.sh -i ~/isd_crete/ena_data/ -o ~/isd_crete/output/
 
 #################################### USAGE ####################################
 ## Usage of the script

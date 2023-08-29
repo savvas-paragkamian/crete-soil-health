@@ -9,7 +9,7 @@
 # Aim of this script is to use the DADA2 pipeline to infer ASVs 
 # from fastq.gz files of ISD Crete 2016
 ###############################################################################
-# usage:./isd_crete_dada2_asv.R
+# usage:./isd_crete_dada2_taxonomy.R
 ###############################################################################
 
 # packages
