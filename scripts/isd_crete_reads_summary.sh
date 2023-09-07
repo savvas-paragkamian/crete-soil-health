@@ -13,8 +13,8 @@
 
 #################################### USAGE ####################################
 ## Usage of the script
-usage="Use the parameter -i for the path of fastq.gz \\
-and -o for the path of the output files.\n \\
+usage="Use the parameter -i for the full path of fastq.gz \\
+and -o for the full path of the output files.\n \\
 Example: ./isd_crete_raw_data_summary.sh -i ~/isd_crete/ena_data/ -o ~/isd_crete/output/ \n"
 
 ## User input PDF file
