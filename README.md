@@ -20,13 +20,12 @@ visit the [website](https://lab42open-team.github.io/isd-crete-website/).
 * [Taxonomic assignement](#taxonomic-assignement)
 * [Metadata](#metadata)
 * [Spatial data](#spatial-data)
-* [Instructions](#running-instructions)
 * [Software](#software)
 * [Hardware](#hardware)
 * [Citation](#citation)
 * [Licence](#licence)
 
-## Data retriaval
+## Data retrieval
 
 The sequences of the ISD Crete 2016 are available in ENA project [PRJEB21776](https://www.ebi.ac.uk/ena/browser/view/PRJEB21776)
 and were downloaded using the ENA API. The script is available [here](scripts/get_isd_crete_2016_fastq.sh) for the
