@@ -52,12 +52,21 @@ echo -e "data: $files \noutput directory: $OUTPUT \n"
 ########################## BEGIN SCRIPT #####################################
 echo "This script runs some commands to summarise reads."
 
-cd $files
 
 ## The files output
-PRIMER_1=${output}/isd_crete_reads_1_primer_summary.tsv
-PRIMER_2=${output}/isd_crete_reads_2_primer_summary.tsv
-Ns=${output}/isd_crete_reads_Ns-summary.tsv
+PRIMER_1=${output}reads_1_primer_summary.tsv
+PRIMER_2=${output}reads_2_primer_summary.tsv
+Ns=${output}reads_Ns-summary.tsv
+
+## create the output files
+touch $PRIMER_1
+touch $PRIMER_2
+touch $Ns
+
+echo "Output files created"
+## run the stats
+echo "Processing input"
+cd $files
 
 zcat *.fastq.gz | gawk -v pr1=$PRIMER_1 -v pr2=$PRIMER_2 -v ns=$Ns 'BEGIN{RS="@" ; FS="\n"}{
 reads[$1]=1;
