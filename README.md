@@ -39,8 +39,7 @@ To find which samples don't appear in metadata run the following command:
 ```
 gawk -F"\t" '($2 ~ /source material identifiers/){split($3,sample,"_"); a[sample[2]][sample[4]]++}END{for (i in a){for (j in a[i]){print i "\t" j "\t" a[i][j]}}}' ena_isd_2016_attributes.tsv
 ```
-The samples DNA wasn't sequenced are:
-
+The samples DNA wasn't sequenced are: 
 * isd_7_site-3_loc_2
 * isd_10_site_1_loc_1
 * isd_10_site_1_loc_1
@@ -123,7 +122,6 @@ geographic location (longitude)
 current land use (emp 500 soil)
 ENA-RUN
 ```
-
 
 ## Spatial data
 
