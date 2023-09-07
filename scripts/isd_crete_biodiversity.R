@@ -1,9 +1,21 @@
 #!/usr/bin/Rscript
 
+###############################################################################
+# script name: isd_crete_biodiversity.R
+# developed by: Savvas Paragkamian, Johanna Holms
+# framework: ISD Crete
+###############################################################################
+# GOAL:
+# Aim of this script is to use ASVs and the sample metadata to perform 
+# ecological analyses on biodiversity, ordination and multivariate comparison.
+###############################################################################
+# usage:./isd_crete_biodiversity.R
+###############################################################################
 library(vegan)
-library(tidyverse)
-library(scales)
-
+library(dplyr)
+library(readr)
+library(magrittr)
+library(tidyr)
 # Load data old repo
 #abundance_asv <- readRDS("../dada2_output/all_runs_dada2_abundance_table.rds")
 #taxa_asv <- readRDS("../dada2_output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
@@ -18,6 +30,18 @@ metadata_long <- read_delim("ena_metadata/ena_isd_2016_attributes.tsv", delim="\
     mutate(VALUE=gsub("\\r(?!\\n)","", VALUE, perl=T))
 # summary
 
+
+# metadata to wide format
+
+metadata_wide <- metadata_long %>% 
+    dplyr::select(-c(UNITS)) %>%
+    mutate(TAG=gsub(" ","_", TAG, perl=T)) %>%
+    pivot_wider(names_from=TAG, 
+                values_from=VALUE)
+
+metadata_wide$total_nitrogen <- as.numeric(metadata_wide$total_nitrogen)
+metadata_wide$water_content <- as.numeric(metadata_wide$water_content)
+metadata_wide$total_organic_carbon <- as.numeric(metadata_wide$total_organic_carbon)
 # transform the matrices to long tables for stats
 
 ## this is for the species exact matching results from DADA2 addSpecies function
