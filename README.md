@@ -73,6 +73,24 @@ to run on a FAT node of the ZORBAS HPC - IMBBC - HCMR.
 FAT node Specs : Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz, 40 CPUs, 503gb RAM
 OS = Debian 4.19.146-1
 
+### Extra handling of DADA2 output
+
+To transform the matrix of the DADA2 output to a long format use the following
+command. This one-liner creates an asv id for each asv sequence, which is the
+header of the file. Use this if the DADA2 matrix/array object was saved as
+table instead of RDS. This creates a matrix that has N colunm names but N+1
+columns.
+
+
+```
+gawk -F"\t" 'BEGIN{print "file" "\t" "asv" "\t" "abundance"}(NR==1){split($0,asv,"\t")}(NR>1){split($0, data, "\t"); for (i=2; i<=length(data); ++i){print data[1] "\t" "asv"i-1 "\t" data[i]}}' seqtab_nochim.tsv > seqtab_nochim_long.tsv
+```
+
+A companion one-liner that contains the sequences of asvs and their created ids.
+```
+gawk -F"\t" 'BEGIN{print "asv_id" "\t" "asv"}(NR==1){split($0,asv,"\t"); for (i in asv){print "asv"i "\t" asv[i]}}' seqtab_nochim.tsv > asv_fasta_ids.tsv
+```
+
 ## Metadata
 
 Each `xml` file, i.e. each sample, has a total of 43 attributes which are 
