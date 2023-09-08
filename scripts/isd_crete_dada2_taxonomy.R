@@ -150,6 +150,7 @@ dada2:::checkConvergence(dadaFs[[1]])
 dadaRs <- dada(filtRs,
                err=err_R,
                multithread=TRUE)
+
 print("check convergence Rs")
 dada2:::checkConvergence(dadaRs[[1]])
 # Merge pairs
@@ -165,6 +166,7 @@ write.table(seqtab,
             col.names = TRUE,
             row.names=TRUE)
 
+saveRDS(seqtab, paste0(output_path,"/taxonomy/seqtab.RDS", sep=""))
 # # Remove chimeras
 print("remove chimeras")
 seqtab.nochim <- removeBimeraDenovo(seqtab,
@@ -176,6 +178,8 @@ write.table(seqtab.nochim,
             sep="\t",
             col.names = TRUE,
             row.names=TRUE)
+
+saveRDS(seqtab.nochim, paste0(output_path,"/taxonomy/seqtab_nochim.RDS", sep=""))
 ## Summary
 
 getN <- function(x) sum(getUniques(x))
@@ -206,7 +210,7 @@ taxa <- assignTaxonomy(seqtab.nochim,
                        tryRC = TRUE, 
                        verbose = TRUE)
 
-saveRDS(taxa, paste0(output_path,"/dada2_taxonomy.RDS", sep=""))
+saveRDS(taxa, paste0(output_path,"/taxonomy/dada2_taxonomy.RDS", sep=""))
 print("assignTaxonomy done.")
 
 # Add your path to SILVA
@@ -218,6 +222,6 @@ taxa <- addSpecies(taxa,
 print("addSpecies done.")
 
 print("begin saving data.")
-saveRDS(taxa, paste0(output_path,"/dada2_taxa_species.RDS", sep=""))
+saveRDS(taxa, paste0(output_path,"/taxonomy/dada2_taxa_species.RDS", sep=""))
 print("data saved.")
 #stop("Manual break inserted here")
