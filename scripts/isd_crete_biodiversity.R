@@ -6,12 +6,24 @@
 # framework: ISD Crete
 ###############################################################################
 # GOAL:
-# Aim of this script is to use ASVs and the sample metadata to perform 
+# Aim of this script is to use ASVs and the taxonomy to filter and normalise
+# the sample biodiversity
+# the sample metadata to perform 
 # ecological analyses on biodiversity, ordination and multivariate comparison.
+#
+###############################################################################
+# OUTPUT:
+# the main output of this script is the crete_biodiversity_asv.tsv
+# which contains the sample - asv occurrences with abundance along with 
+# taxonomic information.
+#
+# The minimum information of this file is 
+# ENA-RUN, asv, abundance
+# Taxonomy is also included.
+#
 ###############################################################################
 # usage:./isd_crete_biodiversity.R
 ###############################################################################
-library(vegan)
 library(dplyr)
 library(tibble)
 library(readr)
@@ -111,6 +123,9 @@ crete_biodiversity_all <- abundance_asv_long %>%
     filter(abundance>0)
 
 ### remove the asvs that don't have a taxonomy
+###
+
+# This is the MASTER dataset of Crete biodiversity and taxonomy
 crete_biodiversity <- crete_biodiversity_all %>%
     filter(!is.na(classification)) 
 
@@ -131,11 +146,20 @@ crete_biodiversity_asv <- crete_biodiversity %>%
               total_abundance=sum(abundance)) %>%
     ungroup()
 
+## singletons
+singletons <- crete_biodiversity_asv %>% 
+    filter(total_abundance==1) %>%
+    nrow()
+
+print(paste0("there are ",singletons," singletons asvs"))
+
+## asv and samples distribution
 asv_sample_dist <- crete_biodiversity_asv %>%
     group_by(n_samples) %>%
-    summarise(n_asv=n(), sum_abundance=sum())
+    summarise(n_asv=n(), sum_abundance=sum(total_abundance))
 
 write_delim(asv_sample_dist,"results/asv_sample_dist.tsv",delim="\t")
+
 
 ## taxonomic diversity per sample
 
@@ -143,11 +167,13 @@ crete_biodiversity_s <- crete_biodiversity %>%
     filter(abundance>10, !is.na(classification)) %>%
     group_by(`ENA-RUN`, classification) %>% 
     summarise(n_taxa=n(), .groups="keep") %>%
-    pivot_wider(names_from=classification,values_from=n_taxa)
+    pivot_wider(names_from=classification,values_from=n_taxa) %>%
+    ungroup()
 
 write_delim(crete_biodiversity_s,
             "results/crete_biodiversity_sample_taxonomy.tsv",
             delim="\t")
+
 summary(crete_biodiversity_s)
 
 ### highest species biodiversity sample
