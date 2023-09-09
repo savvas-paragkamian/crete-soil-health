@@ -15,15 +15,38 @@ visit the [website](https://lab42open-team.github.io/isd-crete-website/).
 
 ## Contents
 
+* [Scripts](#scripts)
 * [Data retrieval](#data-retrieval)
 * [Sequences](#sequences)
-* [Taxonomic assignement](#taxonomic-assignement)
+* [Inference and Taxonomy](#inference-and-taxonomy)
 * [Metadata](#metadata)
 * [Spatial data](#spatial-data)
+* [Analysis](#analysis)
 * [Software](#software)
 * [Hardware](#hardware)
 * [Citation](#citation)
 * [Licence](#licence)
+
+## Scripts
+The scripts of the analysis are in the `scripts` folder and cover the following tasks:
+
+#### task : data retrieval
+1. get sequences [here](scripts/get_isd_crete_2016_fastq.sh)
+2. get metadata [here](scripts/get_isd_crete_2016_attributes.py)
+3. transform metadata [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/ena_xml_to_csv.py)
+
+#### task : Inference and Taxonomy
+1. dada2 [hpc job script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_hpc_job_dada2.sh)
+2. dada2 analysis [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_dada2_taxonomy.R)
+3. pema [hpc job script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_pema_asv.sh)
+
+output: 
+
+#### task : Analysis
+1. biodiversity [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_biodiversity.R)
+2. spatial data [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_spatial.R)
+3. numerical ecology [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_numerical_ecology.R)
+4. figures [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/figures.R)
 
 ## Data retrieval
 
@@ -57,7 +80,7 @@ Primers used are FWD: 5'-ACTCCTACGGGAGGCAGCAG-3' REV: 5'-GGACTACHVGGGTWTCTAAT-3'
 Numbers of Ns in reads : there are many reads with Ns and the `dada` function
 doesn't accept so after the filtering they are all removed.
 
-## Taxonomic assignement
+## Inference and Taxonomy
 We used PEMA and DADA2 for the clustering of OTUs and ASVs, respectively.
 
 ### PEMA
@@ -152,6 +175,10 @@ regions and on the hotspots of the arthropod endemic taxa.
 The protected areas of [Natura2000 SCI](https://www.eea.europa.eu/data-and-maps/data/natura-14)
 (habitats directive) and [Wildlife refugees](https://www.protectedplanet.net/en/thematic-areas/wdpa?tab=WDPA)
 are used in this analysis. 
+
+## Analysis
+
+
 
 ## Software
 
