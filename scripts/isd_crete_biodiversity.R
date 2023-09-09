@@ -13,24 +13,25 @@
 ###############################################################################
 library(vegan)
 library(dplyr)
+library(tibble)
 library(readr)
 library(magrittr)
 library(tidyr)
 # Load data old repo
-#abundance_asv <- readRDS("../dada2_output/all_runs_dada2_abundance_table.rds")
-#taxa_asv <- readRDS("../dada2_output/2023-07-27-dada2-taxa-silva-v138-1.RDS")
-#species_asv <- readRDS("../dada2_output/2023-07-31-dada2_taxa_species.RDS")
-#master_metadata <- read.delim("../dada2_output/Composite_MetaData_from_master.csv", sep=",")
+abundance_asv_old <- readRDS("Crete/all_runs_dada2_abundance_table.rds")
+master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
 
 # Load data
-abundance_asv <- read_delim("dada2_output/taxonomy/seqtab_nochim.tsv", delim="\t")
+abundance_asv_long <- read_delim("dada2_output/taxonomy/seqtab_nochim_long.tsv", delim="\t") %>% 
+    mutate(`ENA-RUN`=gsub("_1_filt.fastq.gz", "", file, perl=T))
+#abundance_asv <- readRDS("dada2_output/taxonomy/seqtab_nochim.RDS") # use this one if data are RDS
+asv_fasta <- read_delim("dada2_output/taxonomy/asv_fasta_ids.tsv", delim="\t")
 taxa_asv <- readRDS("dada2_output/taxonomy/dada2_taxonomy.RDS")
 species_asv <- readRDS("dada2_output/taxonomy/dada2_taxa_species.RDS")
 metadata_long <- read_delim("ena_metadata/ena_isd_2016_attributes.tsv", delim="\t") %>%
     mutate(VALUE=gsub("\\r(?!\\n)","", VALUE, perl=T))
-# summary
 
-
+#summary
 # metadata to wide format
 
 metadata_wide <- metadata_long %>% 
@@ -42,21 +43,26 @@ metadata_wide <- metadata_long %>%
 metadata_wide$total_nitrogen <- as.numeric(metadata_wide$total_nitrogen)
 metadata_wide$water_content <- as.numeric(metadata_wide$water_content)
 metadata_wide$total_organic_carbon <- as.numeric(metadata_wide$total_organic_carbon)
+# differences of old and new data
+
+master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata_wide$source_material_identifiers))]
+
 # transform the matrices to long tables for stats
 
 ## this is for the species exact matching results from DADA2 addSpecies function
 species <- data.frame(genus = species_asv[,6], species = species_asv[,8]) %>% 
     rownames_to_column("asv") %>%
-    mutate(speciesname = paste(genus, species,sep=" "))# %>%
+    mutate(speciesname = paste(genus, species,sep=" ")) %>%
     group_by(speciesname) %>%
     summarise(n=n())
 
 ## the abundance matrix has all the biodiverstity information
 ## sampleID, ASV and abundance. NOTE that contains many zeros!!!
-abundance_asv_l <- abundance_asv %>% 
-    data.frame() %>%
-    rownames_to_column("sampleID") %>%
-    pivot_longer(!sampleID, names_to = "asv", values_to = "abundance")
+## UNCOMMENT if data are from RDS!
+#abundance_asv_l <- abundance_asv %>% 
+#    data.frame() %>%
+#    rownames_to_column("sampleID") %>%
+#    pivot_longer(!sampleID, names_to = "asv", values_to = "abundance")
 
 ## the taxonomy matrix has all the taxonomic information of each ASV
 taxa_asv_l <- taxa_asv %>% 
@@ -69,7 +75,8 @@ taxa_asv_l <- taxa_asv %>%
                  names_to = "higherClassification",
                  values_to = "scientificName") %>%
     na.omit("scientificName") %>%
-    ungroup()
+    ungroup() %>%
+    left_join(asv_fasta, by=c("asv"="asv"))
 
 
 taxa_asv_s <- taxa_asv_l %>%
@@ -99,15 +106,15 @@ taxa_asv_all <- taxa_asv_l %>%
     
 # merge abundance and taxonomy
 
-crete_biodiversity_all <- abundance_asv_l %>%
-    left_join(taxa_asv_all,by=c("asv"="asv")) %>%
+crete_biodiversity_all <- abundance_asv_long %>%
+    left_join(taxa_asv_all,by=c("asv_id"="asv_id")) %>%
     filter(abundance>0)
 
 ### remove the asvs that don't have a taxonomy
 crete_biodiversity <- crete_biodiversity_all %>%
     filter(!is.na(classification)) 
 
-write_delim(crete_biodiversity,"../results/crete_biodiversity_asv.tsv",delim="\t")
+write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
 # Descriptives
 
 ## total ASVs and taxonomy
@@ -128,18 +135,18 @@ asv_sample_dist <- crete_biodiversity_asv %>%
     group_by(n_samples) %>%
     summarise(n_asv=n(), sum_abundance=sum())
 
-write_delim(asv_sample_dist,"../results/asv_sample_dist.tsv",delim="\t")
+write_delim(asv_sample_dist,"results/asv_sample_dist.tsv",delim="\t")
 
 ## taxonomic diversity per sample
 
 crete_biodiversity_s <- crete_biodiversity %>% 
     filter(abundance>10, !is.na(classification)) %>%
-    group_by(sampleID, classification) %>% 
+    group_by(`ENA-RUN`, classification) %>% 
     summarise(n_taxa=n(), .groups="keep") %>%
     pivot_wider(names_from=classification,values_from=n_taxa)
 
 write_delim(crete_biodiversity_s,
-            "../results/crete_biodiversity_sample_taxonomy.tsv",
+            "results/crete_biodiversity_sample_taxonomy.tsv",
             delim="\t")
 summary(crete_biodiversity_s)
 
@@ -160,6 +167,10 @@ total_phyla_dist <- phyla_dist %>%
               n_samples=n()) %>%
     mutate(sampleID="All samples") %>%
     arrange(desc(n_samples))
+
+## Decontamination
+
+
 ## create bar plots for each sample at family level, class level, Phylum etc
 ## shannon per sample
 ## bray curtis per sample
