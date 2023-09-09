@@ -154,6 +154,15 @@ summary(crete_biodiversity_s)
 print("sample with the highest microbial species diversity")
 crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
+highest_crete_biodiversity_s <- crete_biodiversity_s %>% 
+    left_join(metadata_wide,
+              by=c("ENA-RUN"="ENA-RUN")) %>% 
+    select(place_name,source_material_identifiers, Species, `ENA-RUN`)
+
+write_delim(highest_crete_biodiversity_s,
+            "results/highest_crete_biodiversity_sample_taxonomy.tsv",
+            delim="\t")
+
 ## Phyla distribution
 
 phyla_dist <- crete_biodiversity %>%
