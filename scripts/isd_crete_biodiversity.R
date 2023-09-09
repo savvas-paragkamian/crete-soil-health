@@ -8,8 +8,6 @@
 # GOAL:
 # Aim of this script is to use ASVs and the taxonomy to filter and normalise
 # the sample biodiversity
-# the sample metadata to perform 
-# ecological analyses on biodiversity, ordination and multivariate comparison.
 #
 ###############################################################################
 # OUTPUT:
@@ -20,7 +18,11 @@
 # The minimum information of this file is 
 # ENA-RUN, asv, abundance
 # Taxonomy is also included.
-#
+# 
+# Other 3 files are produced
+# sample_stats.tsv
+# sample_stats_total.tsv
+# asv_stas.tsv
 ###############################################################################
 # usage:./isd_crete_biodiversity.R
 ###############################################################################
@@ -40,24 +42,6 @@ abundance_asv_long <- read_delim("dada2_output/taxonomy/seqtab_nochim_long.tsv",
 asv_fasta <- read_delim("dada2_output/taxonomy/asv_fasta_ids.tsv", delim="\t")
 taxa_asv <- readRDS("dada2_output/taxonomy/dada2_taxonomy.RDS")
 species_asv <- readRDS("dada2_output/taxonomy/dada2_taxa_species.RDS")
-metadata_long <- read_delim("ena_metadata/ena_isd_2016_attributes.tsv", delim="\t") %>%
-    mutate(VALUE=gsub("\\r(?!\\n)","", VALUE, perl=T))
-
-#summary
-# metadata to wide format
-
-metadata_wide <- metadata_long %>% 
-    dplyr::select(-c(UNITS)) %>%
-    mutate(TAG=gsub(" ","_", TAG, perl=T)) %>%
-    pivot_wider(names_from=TAG, 
-                values_from=VALUE)
-
-metadata_wide$total_nitrogen <- as.numeric(metadata_wide$total_nitrogen)
-metadata_wide$water_content <- as.numeric(metadata_wide$water_content)
-metadata_wide$total_organic_carbon <- as.numeric(metadata_wide$total_organic_carbon)
-# differences of old and new data
-
-master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata_wide$source_material_identifiers))]
 
 # transform the matrices to long tables for stats
 
@@ -115,22 +99,26 @@ taxa_asv_all <- taxa_asv_l %>%
                 values_from=scientificName) %>% 
     left_join(taxa_asv_s, by=c("asv"="asv"))
 
-    
 # merge abundance and taxonomy
 
 crete_biodiversity_all <- abundance_asv_long %>%
     left_join(taxa_asv_all,by=c("asv_id"="asv_id")) %>%
     filter(abundance>0)
 
-### remove the asvs that don't have a taxonomy
+# Relative abundance 
+
 ###
 
+# Decontamination
+## very important step, we need the samples controls.
+
 # This is the MASTER dataset of Crete biodiversity and taxonomy
+### remove the asvs that don't have a taxonomy
+
 crete_biodiversity <- crete_biodiversity_all %>%
     filter(!is.na(classification)) 
 
 write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
-# Descriptives
 
 ## total ASVs and taxonomy
 asv_no_taxonomy <- crete_biodiversity_all %>% 
@@ -140,73 +128,48 @@ asv_no_taxonomy <- crete_biodiversity_all %>%
 print(paste0("ASVs without taxonomy: ", nrow(asv_no_taxonomy)))
 
 ## total ASV summary
-crete_biodiversity_asv <- crete_biodiversity %>% 
-    group_by(asv) %>% 
+asv_stats <- crete_biodiversity %>% 
+    group_by(asv_id, classification, scientificName) %>% 
     summarise(n_samples=n(),
-              total_abundance=sum(abundance)) %>%
+              reads=sum(abundance), .groups="keep") %>%
     ungroup()
 
+write_delim(asv_stats,"results/asv_stats.tsv",delim="\t")
 ## singletons
-singletons <- crete_biodiversity_asv %>% 
-    filter(total_abundance==1) %>%
+singletons <- asv_stats %>% 
+    filter(reads==1) %>%
     nrow()
 
 print(paste0("there are ",singletons," singletons asvs"))
 
 ## asv and samples distribution
-asv_sample_dist <- crete_biodiversity_asv %>%
+asv_sample_dist <- asv_stats %>%
     group_by(n_samples) %>%
-    summarise(n_asv=n(), sum_abundance=sum(total_abundance))
+    summarise(n_asv=n(), reads=sum(reads))
 
-write_delim(asv_sample_dist,"results/asv_sample_dist.tsv",delim="\t")
+## taxonomic, asv and read diversity per sample
+sample_reads <- crete_biodiversity %>%
+    group_by(`ENA-RUN`) %>%
+    summarise(asvs=n(),reads=sum(abundance))
 
+summary(sample_reads)
 
-## taxonomic diversity per sample
-
-crete_biodiversity_s <- crete_biodiversity %>% 
-    filter(abundance>10, !is.na(classification)) %>%
-    group_by(`ENA-RUN`, classification) %>% 
-    summarise(n_taxa=n(), .groups="keep") %>%
-    pivot_wider(names_from=classification,values_from=n_taxa) %>%
+sample_stats <- crete_biodiversity %>% 
+    group_by(`ENA-RUN`, classification, scientificName) %>% 
+    summarise(asvs=n(), reads=sum(abundance), .groups="keep") %>%
+    group_by(`ENA-RUN`,classification) %>%
+    summarise(taxa=n(),reads=sum(reads), asvs=sum(asvs), .groups="keep") %>%
+#    pivot_wider(names_from=classification,values_from=n_taxa) %>%
     ungroup()
 
-write_delim(crete_biodiversity_s,
-            "results/crete_biodiversity_sample_taxonomy.tsv",
+write_delim(sample_stats,
+            "results/sample_stats.tsv",
             delim="\t")
 
-summary(crete_biodiversity_s)
+sample_stats_total <- sample_stats %>%
+    group_by(`ENA-RUN`) %>%
+    summarise(taxa=sum(taxa),reads=sum(reads), asvs=sum(asvs))
 
-### highest species biodiversity sample
-print("sample with the highest microbial species diversity")
-crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
-
-highest_crete_biodiversity_s <- crete_biodiversity_s %>% 
-    left_join(metadata_wide,
-              by=c("ENA-RUN"="ENA-RUN")) %>% 
-    select(place_name,source_material_identifiers, Species, `ENA-RUN`)
-
-write_delim(highest_crete_biodiversity_s,
-            "results/highest_crete_biodiversity_sample_taxonomy.tsv",
+write_delim(sample_stats_total,
+            "results/sample_stats_total.tsv",
             delim="\t")
-
-## Phyla distribution
-
-phyla_dist <- crete_biodiversity %>%
-    group_by(sampleID,Phylum) %>%
-    summarise(sum_abundance=sum(abundance), .groups="keep") %>%
-    na.omit(Phylum)
-
-total_phyla_dist <- phyla_dist %>% 
-    group_by(Phylum) %>%
-    summarise(sum_abundance=sum(sum_abundance),
-              n_samples=n()) %>%
-    mutate(sampleID="All samples") %>%
-    arrange(desc(n_samples))
-
-## Decontamination
-
-
-## create bar plots for each sample at family level, class level, Phylum etc
-## shannon per sample
-## bray curtis per sample
-## 
