@@ -83,7 +83,7 @@ columns.
 
 
 ```
-gawk -F"\t" 'BEGIN{print "file" "\t" "asv" "\t" "abundance"}(NR==1){split($0,asv,"\t")}(NR>1){split($0, data, "\t"); for (i=2; i<=length(data); ++i){print data[1] "\t" "asv"i-1 "\t" data[i]}}' seqtab_nochim.tsv > seqtab_nochim_long.tsv
+gawk -F"\t" 'BEGIN{print "file" "\t" "asv_id" "\t" "abundance"}(NR==1){split($0,asv,"\t")}(NR>1){split($0, data, "\t"); for (i=2; i<=length(data); ++i){print data[1] "\t" "asv"i-1 "\t" data[i]}}' seqtab_nochim.tsv > seqtab_nochim_long.tsv
 ```
 
 A companion one-liner that contains the sequences of asvs and their created ids.
