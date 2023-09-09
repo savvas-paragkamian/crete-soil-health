@@ -182,6 +182,12 @@ are used in this analysis.
 
 ## Software
 
+#### Conda environment
+In the IMBBC HPC facility we created `conda` environments for reproducibility and 
+flexibility of the tools installations.
+
+#### 
+
 PEMA
 DADA2
 vegan
