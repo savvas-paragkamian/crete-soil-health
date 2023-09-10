@@ -35,41 +35,23 @@ tax_tab <- readRDS("results/tax_tab.RDS")
 
 master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
 
-metadata_long <- read_delim("ena_metadata/ena_isd_2016_attributes.tsv", delim="\t") %>%
-    mutate(VALUE=gsub("\\r(?!\\n)","", VALUE, perl=T))
+metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
 # metadata to wide format
 
-metadata_wide <- metadata_long %>% 
-    dplyr::select(-c(UNITS)) %>%
-    mutate(TAG=gsub(" ","_", TAG, perl=T)) %>%
-    pivot_wider(names_from=TAG, 
-                values_from=VALUE)
-
-metadata_wide$total_nitrogen <- as.numeric(metadata_wide$total_nitrogen)
-metadata_wide$water_content <- as.numeric(metadata_wide$water_content)
-metadata_wide$total_organic_carbon <- as.numeric(metadata_wide$total_organic_carbon)
-metadata_wide$sample_volume_or_weight_for_DNA_extraction <- as.numeric(metadata_wide$sample_volume_or_weight_for_DNA_extraction)
-metadata_wide$DNA_concentration <- as.numeric(metadata_wide$DNA_concentration)
-metadata_wide$latitude <- as.numeric(metadata_wide$`geographic_location_(latitude)`)
-metadata_wide$longitude <- as.numeric(metadata_wide$`geographic_location_(longitude)`)
-metadata_wide$elevation <- as.numeric(metadata_wide$`geographic_location_(elevation)`)
-metadata_wide$amount_or_size_of_sample_collected <- as.numeric(metadata_wide$amount_or_size_of_sample_collected)
-
-metadata <- metadata_wide %>%
-    select(`ENA-RUN`, source_material_identifiers, total_nitrogen, water_content,total_organic_carbon,sample_volume_or_weight_for_DNA_extraction,DNA_concentration,latitude, longitude,elevation, amount_or_size_of_sample_collected, vegetation_zone) %>%
-    arrange(`ENA-RUN`) %>%
+metadata1 <- metadata %>%
+    arrange(ENA_RUN) %>%
     as.data.frame()
 
-rownames(metadata) <- metadata$`ENA-RUN`
-metadata <- metadata[,-1]
+rownames(metadata1) <- metadata1$ENA_RUN
+metadata1 <- metadata[,-1]
 # differences of old and new data
 
-master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata_wide$source_material_identifiers))]
+master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
 
 # ancombc analysis
 
 assays = SimpleList(counts = crete_biodiversity_matrix)
-smd = DataFrame(metadata[1])
+smd = DataFrame(metadata1)
 tax_tab = DataFrame(tax_tab)
 
 # create TSE
@@ -78,6 +60,13 @@ tse = TreeSummarizedExperiment(assays = assays,
                                rowData = tax_tab)
 # convert TSE to phyloseq
 pseq = makePhyloseqFromTreeSummarizedExperiment(tse)
+
+total = median(sample_sums(pseq))
+standf = function(x, t=total) round(t * (x / sum(x)))
+
+pseq_std  = transform_sample_counts(pseq,standf )
+
+plot_bar(pseq_std, "LABEL1", "Abundance", title="test")
 
 set.seed(123)
 output = ancombc2(data = tse, assay_name = "counts", tax_level = "Family",
