@@ -40,6 +40,7 @@ metadata_wide <- metadata_long %>%
     pivot_wider(names_from=TAG, 
                 values_from=VALUE)
 
+metadata_wide$ENA_RUN <- metadata_wide$`ENA-RUN`
 metadata_wide$total_nitrogen <- as.numeric(metadata_wide$total_nitrogen)
 metadata_wide$water_content <- as.numeric(metadata_wide$water_content)
 metadata_wide$total_organic_carbon <- as.numeric(metadata_wide$total_organic_carbon)
@@ -50,7 +51,7 @@ metadata_wide$longitude <- as.numeric(metadata_wide$`geographic_location_(longit
 metadata_wide$elevation <- as.numeric(metadata_wide$`geographic_location_(elevation)`)
 metadata_wide$amount_or_size_of_sample_collected <- as.numeric(metadata_wide$amount_or_size_of_sample_collected)
 
-locations_spatial <- metadata_wide %>%
+metadata_spatial <- metadata_wide %>%
     dplyr::select(`ENA-RUN`, source_material_identifiers, total_nitrogen, water_content,total_organic_carbon,sample_volume_or_weight_for_DNA_extraction,DNA_concentration,latitude, longitude,elevation, amount_or_size_of_sample_collected, vegetation_zone) %>%
     arrange(`ENA-RUN`) %>%
     mutate(route = sub("isd_(.*.)_site.*" ,"\\1" ,metadata$source_material_identifiers)) %>%
@@ -75,6 +76,15 @@ dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
+# Enrichment
+
+metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
+metadata_spatial <- st_join(metadata_spatial, natura_crete, left=T)
+metadata_spatial$dem <- raster::extract(dem_crete, metadata_spatial, cellnumbers=F)
+
+metadata <- metadata_spatial %>% st_drop_geometry()
+
+write_delim(metadata,"results/metadata_spatial.tsv", delim="\t")
 
 
 # Colorblind palette
@@ -85,7 +95,7 @@ cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darko
 crete_base <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
-    geom_point(locations_spatial,
+    geom_point(metadata_spatial,
             mapping=aes(x=longitude, y=latitude, color=route),
             size=1,
             alpha=0.8,
