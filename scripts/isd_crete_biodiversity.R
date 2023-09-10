@@ -125,8 +125,8 @@ crete_biodiversity_m <- crete_biodiversity %>%
     as.matrix()
 
 crete_biodiversity_matrix <- crete_biodiversity_m[,-1]
+crete_biodiversity_matrix <- apply(crete_biodiversity_matrix, 2, as.numeric)
 rownames(crete_biodiversity_matrix) <- crete_biodiversity_m[,1]
-apply(crete_biodiversity_matrix, 2, as.numeric)
 saveRDS(crete_biodiversity_matrix, "results/crete_biodiversity_matrix.RDS")
 
 # Create taxonomy table of the remaining asvs
