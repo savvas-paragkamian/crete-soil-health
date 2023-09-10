@@ -52,9 +52,9 @@ metadata_wide$elevation <- as.numeric(metadata_wide$`geographic_location_(elevat
 metadata_wide$amount_or_size_of_sample_collected <- as.numeric(metadata_wide$amount_or_size_of_sample_collected)
 
 metadata_spatial <- metadata_wide %>%
-    dplyr::select(`ENA-RUN`, source_material_identifiers, total_nitrogen, water_content,total_organic_carbon,sample_volume_or_weight_for_DNA_extraction,DNA_concentration,latitude, longitude,elevation, amount_or_size_of_sample_collected, vegetation_zone) %>%
-    arrange(`ENA-RUN`) %>%
-    mutate(route = sub("isd_(.*.)_site.*" ,"\\1" ,metadata$source_material_identifiers)) %>%
+    dplyr::select(ENA_RUN, source_material_identifiers, total_nitrogen, water_content,total_organic_carbon,sample_volume_or_weight_for_DNA_extraction,DNA_concentration,latitude, longitude,elevation, amount_or_size_of_sample_collected, vegetation_zone) %>%
+    arrange(ENA_RUN) %>%
+    mutate(route = sub("isd_(.*.)_site.*" ,"\\1" , source_material_identifiers)) %>%
     st_as_sf(coords=c("longitude", "latitude"),
              remove=F,
              crs="WGS84")
