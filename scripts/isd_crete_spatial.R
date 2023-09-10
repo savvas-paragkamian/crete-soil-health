@@ -79,7 +79,7 @@ dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 # Enrichment
 
 metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
-metadata_spatial <- st_join(metadata_spatial, natura_crete, left=T)
+metadata_spatial <- st_join(metadata_spatial, natura_crete_land_sci, left=T)
 metadata_spatial$dem <- raster::extract(dem_crete, metadata_spatial, cellnumbers=F)
 
 metadata <- metadata_spatial %>% st_drop_geometry()
