@@ -19,7 +19,9 @@
 # ENA-RUN, asv, abundance
 # Taxonomy is also included.
 # 
-# Other 3 files are produced
+# Other 5 files are produced
+# crete_biodiversity_matrix.RDS, a matrix of abundances
+# tax_tab.RDS, taxonomy table with the remaining asvs
 # sample_stats.tsv
 # sample_stats_total.tsv
 # asv_stas.tsv
@@ -105,10 +107,6 @@ crete_biodiversity_all <- abundance_asv_long %>%
     left_join(taxa_asv_all,by=c("asv_id"="asv_id")) %>%
     filter(abundance>0)
 
-# Relative abundance 
-
-###
-
 # Decontamination
 ## very important step, we need the samples controls.
 
@@ -116,9 +114,29 @@ crete_biodiversity_all <- abundance_asv_long %>%
 ### remove the asvs that don't have a taxonomy
 
 crete_biodiversity <- crete_biodiversity_all %>%
-    filter(!is.na(classification)) 
+    filter(!is.na(classification), abundance < 100)
 
 write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
+
+## create a abundance matrix
+crete_biodiversity_m <- crete_biodiversity %>%
+    select(`ENA-RUN`, asv_id, abundance) %>%
+    pivot_wider(names_from=`ENA-RUN`, values_from=abundance, values_fill = 0) %>%
+    as.matrix()
+
+crete_biodiversity_matrix <- crete_biodiversity_m[,-1]
+rownames(crete_biodiversity_matrix) <- crete_biodiversity_m[,1]
+
+saveRDS(crete_biodiversity_matrix, "results/crete_biodiversity_matrix.RDS")
+
+# Create taxonomy table of the remaining asvs
+tax_tab1 <- crete_biodiversity %>%
+    distinct(asv_id, Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
+    as.matrix()
+
+tax_tab <- tax_tab1[,-1]
+rownames(tax_tab) <- tax_tab1[,1]
+saveRDS(tax_tab, "results/tax_tab.RDS")
 
 ## total ASVs and taxonomy
 asv_no_taxonomy <- crete_biodiversity_all %>% 
@@ -173,3 +191,4 @@ sample_stats_total <- sample_stats %>%
 write_delim(sample_stats_total,
             "results/sample_stats_total.tsv",
             delim="\t")
+
