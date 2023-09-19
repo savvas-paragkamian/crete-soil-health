@@ -84,7 +84,11 @@ metadata_spatial$dem <- raster::extract(dem_crete, metadata_spatial, cellnumbers
 
 metadata <- metadata_spatial %>% 
     st_drop_geometry() %>% 
-    dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark))
+    dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark)) %>%
+    mutate(elevation_bin=cut(elevation, 
+                             breaks=seq.int(from=0, to=2500, by=400),
+                             dig.lab = 5 ))
+
 
 write_delim(metadata,"results/metadata_spatial.tsv", delim="\t")
 
