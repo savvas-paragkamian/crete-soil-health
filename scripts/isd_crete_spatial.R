@@ -82,7 +82,9 @@ metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
 metadata_spatial <- st_join(metadata_spatial, natura_crete_land_sci, left=T)
 metadata_spatial$dem <- raster::extract(dem_crete, metadata_spatial, cellnumbers=F)
 
-metadata <- metadata_spatial %>% st_drop_geometry()
+metadata <- metadata_spatial %>% 
+    st_drop_geometry() %>% 
+    dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark))
 
 write_delim(metadata,"results/metadata_spatial.tsv", delim="\t")
 
