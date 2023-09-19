@@ -25,6 +25,7 @@ library(tibble)
 library(readr)
 library(magrittr)
 library(tidyr)
+library(SRS)
 
 # Load data
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
@@ -36,14 +37,7 @@ tax_tab <- readRDS("results/tax_tab.RDS")
 master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
 
 metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
-# metadata to wide format
 
-metadata1 <- metadata %>%
-    arrange(ENA_RUN) %>%
-    as.data.frame()
-
-rownames(metadata1) <- metadata1$ENA_RUN
-metadata1 <- metadata[,-1]
 # differences of old and new data
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
@@ -51,6 +45,22 @@ master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_
 
 # SRS compositional
 
+Cmin <- min(colSums(crete_biodiversity_matrix))
+summary(colSums(crete_biodiversity_matrix))
+table(colSums(crete_biodiversity_matrix) > 30000)
+
+jpeg(file="isd_crete_srs_curve.jpeg")
+
+SRScurve(crete_biodiversity_matrix,
+         metric = "richness",
+         step = 5000,
+         xlim=c(0,100000),
+         xlab = "sample size",
+         ylab = "richness",
+         label = F,
+         col = c("#5A4A6F", "#E47250",  "#EBB261"))
+
+dev.off()
 df <- as.data.frame(crete_biodiversity_matrix)
 df_srs <- SRS(df, 20000, set_seed = TRUE, seed = 1)
 
