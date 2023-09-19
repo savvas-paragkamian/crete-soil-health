@@ -48,6 +48,25 @@ metadata1 <- metadata[,-1]
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
 
+
+# SRS compositional
+
+df <- as.data.frame(crete_biodiversity_matrix)
+df_srs <- SRS(df, 20000, set_seed = TRUE, seed = 1)
+
+
+#Explore alpha-metrics
+alpha_div <- data.frame(
+  phyloseq::estimate_richness(otu_table(as.data.frame(df_srs), taxa_are_rows = TRUE), measures = "Observed"),
+  phyloseq::estimate_richness(otu_table(as.data.frame(df_srs), taxa_are_rows = TRUE), measures = "Shannon"))
+
+alpha_div$ENA_RUN <- rownames(alpha_div)
+metadata_all <- alpha_div %>% left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
+
+pw <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$vegetation_zone, p.adjust.method="BH")
+pw_s <- pairwise.wilcox.test(metadata_all$Shannon, metadata_all$LABEL1, p.adjust.method="BH")
+print(pw)
+
 # ancombc analysis
 
 assays = SimpleList(counts = crete_biodiversity_matrix)
@@ -65,9 +84,30 @@ total = median(sample_sums(pseq))
 standf = function(x, t=total) round(t * (x / sum(x)))
 
 pseq_std  = transform_sample_counts(pseq,standf )
+gpsf = filter_taxa(pseq_std, function(x) sd(x)/mean(x) > 3.0, TRUE)
 
-plot_bar(pseq_std, "LABEL1", "Abundance", title="test")
+gpsfb = subset_taxa(gpsf, Order=="Frankiales")
 
+jpeg(file="saving_plot1.jpeg")
+plot_bar(gpsfb, "LABEL1", "Abundance", "Family", title="test")
+dev.off()
+
+
+GP = pseq_std
+#wh0 = genefilter_sample(GP, filterfun_sample(function(x) x > 5), A=0.5*nsamples(GP))
+#GP1 = prune_taxa(wh0, GP)
+
+#GP1 = transform_sample_counts(GP, function(x) 1E6 * x/sum(x))
+
+GP.ord <- ordinate(pseq, "NMDS", "bray")
+
+jpeg(file="saving_plot1.jpeg")
+p1 = plot_ordination(GP, GP.ord, type="samples", color="LABEL1", title="taxa")
+p1
+dev.off()
+
+
+###
 set.seed(123)
 output = ancombc2(data = tse, assay_name = "counts", tax_level = "Family",
                   fix_formula = NULL, rand_formula = NULL,
