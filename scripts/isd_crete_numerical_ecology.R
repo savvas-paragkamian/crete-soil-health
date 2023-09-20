@@ -46,36 +46,63 @@ master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_
 # SRS compositional
 
 Cmin <- min(colSums(crete_biodiversity_matrix))
+Cmax <- max(colSums(crete_biodiversity_matrix))
 summary(colSums(crete_biodiversity_matrix))
 table(colSums(crete_biodiversity_matrix) > 30000)
 
-jpeg(file="isd_crete_srs_curve.jpeg")
+## SRS curve
+jpeg(file="results/isd_crete_srs_curve.jpeg")
 
 SRScurve(crete_biodiversity_matrix,
          metric = "richness",
-         step = 5000,
-         xlim=c(0,100000),
+         step = 500,
+         xlim=c(0,Cmax),
          xlab = "sample size",
          ylab = "richness",
          label = F,
          col = c("#5A4A6F", "#E47250",  "#EBB261"))
 
 dev.off()
-df <- as.data.frame(crete_biodiversity_matrix)
-df_srs <- SRS(df, 20000, set_seed = TRUE, seed = 1)
 
+crete_biodiversity_matrix_df <- as.data.frame(crete_biodiversity_matrix)
+rownames(crete_biodiversity_matrix_df) <- rownames(crete_biodiversity_matrix)
+biodiversity_srs <- SRS(crete_biodiversity_matrix_df, 10000, set_seed = TRUE, seed = 1)
+rownames(biodiversity_srs) <- rownames(crete_biodiversity_matrix_df)
+
+# how many samples don't have ASVs
+length(which(colSums(biodiversity_srs)==0))
+# how many ASVs have 0 abundance after the SRS
+length(which(rowSums(biodiversity_srs)==0))
+dim(biodiversity_srs)
+## filter empty
+biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
+
+
+# filter also metadata and taxonomy
 
 #Explore alpha-metrics
-alpha_div <- data.frame(
-  phyloseq::estimate_richness(otu_table(as.data.frame(df_srs), taxa_are_rows = TRUE), measures = "Observed"),
-  phyloseq::estimate_richness(otu_table(as.data.frame(df_srs), taxa_are_rows = TRUE), measures = "Shannon"))
+biodiversity_index <- data.frame(
+  phyloseq::estimate_richness(otu_table(as.data.frame(biodiversity_srs),
+                                        taxa_are_rows = TRUE),
+                              measures = "Observed"),
+  phyloseq::estimate_richness(otu_table(as.data.frame(biodiversity_srs),
+                                        taxa_are_rows = TRUE),
+                              measures = "Shannon"))
 
-alpha_div$ENA_RUN <- rownames(alpha_div)
-metadata_all <- alpha_div %>% left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
+biodiversity_index$ENA_RUN <- rownames(biodiversity_index)
+## keep only the sample metadata after filtering
+metadata_all <- biodiversity_index %>% left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
 
 pw <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$vegetation_zone, p.adjust.method="BH")
+pw_e <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$elevation_bin, p.adjust.method="BH")
 pw_s <- pairwise.wilcox.test(metadata_all$Shannon, metadata_all$LABEL1, p.adjust.method="BH")
 print(pw)
+
+multiple_wilcox <- function(){
+
+combn(colnames(metadata_all),2) 
+
+}
 
 # ancombc analysis
 
@@ -83,11 +110,11 @@ assays = SimpleList(counts = crete_biodiversity_matrix)
 smd = DataFrame(metadata1)
 tax_tab = DataFrame(tax_tab)
 
-# create TSE
+## create TSE
 tse = TreeSummarizedExperiment(assays = assays,
                                colData = smd,
                                rowData = tax_tab)
-# convert TSE to phyloseq
+## convert TSE to phyloseq
 pseq = makePhyloseqFromTreeSummarizedExperiment(tse)
 
 total = median(sample_sums(pseq))
