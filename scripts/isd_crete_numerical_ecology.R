@@ -26,6 +26,7 @@ library(readr)
 library(magrittr)
 library(tidyr)
 library(SRS)
+library(ggplot2)
 
 # Load data
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
@@ -100,6 +101,25 @@ pw <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$vegetation_zone, 
 pw_e <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$elevation_bin, p.adjust.method="BH")
 pw_s <- pairwise.wilcox.test(metadata_all$Shannon, metadata_all$LABEL1, p.adjust.method="BH")
 print(pw)
+
+
+box_shannon <- ggplot(data=metadata_all, mapping=aes(x=LABEL2, y=Shannon))+
+    geom_boxplot()+
+    geom_jitter(width = 0.2)+
+    theme_bw()+
+    theme(axis.text.x = element_text(face="bold",
+                                     size = 10,
+                                     angle = 45,
+                                     vjust = 1,
+                                     hjust=1))
+
+
+ggsave("figures/box_shannon.png", 
+       plot=box_shannon, 
+       device="png", 
+       height = 23, 
+       width = 23, 
+       units="cm")
 
 multiple_wilcox <- function(){
 
