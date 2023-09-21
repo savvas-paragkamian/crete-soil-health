@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 
 ###############################################################################
 # script name: isd_crete_biodiversity.R
@@ -39,7 +39,7 @@ master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", se
 
 # Load data
 abundance_asv_long <- read_delim("dada2_output/taxonomy/seqtab_nochim_long.tsv", delim="\t") %>% 
-    mutate(`ENA-RUN`=gsub("_1_filt.fastq.gz", "", file, perl=T))
+    mutate(ENA_RUN=gsub("_1_filt.fastq.gz", "", file, perl=T))
 #abundance_asv <- readRDS("dada2_output/taxonomy/seqtab_nochim.RDS") # use this one if data are RDS
 asv_fasta <- read_delim("dada2_output/taxonomy/asv_fasta_ids.tsv", delim="\t")
 taxa_asv <- readRDS("dada2_output/taxonomy/dada2_taxonomy.RDS")
@@ -120,8 +120,8 @@ write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
 
 ## create a abundance matrix
 crete_biodiversity_m <- crete_biodiversity %>%
-    select(`ENA-RUN`, asv_id, abundance) %>%
-    pivot_wider(names_from=`ENA-RUN`, values_from=abundance, values_fill = 0) %>%
+    select(ENA_RUN, asv_id, abundance) %>%
+    pivot_wider(names_from=ENA_RUN, values_from=abundance, values_fill = 0) %>%
     as.matrix()
 
 crete_biodiversity_matrix <- crete_biodiversity_m[,-1]
@@ -167,15 +167,15 @@ asv_sample_dist <- asv_stats %>%
 
 ## taxonomic, asv and read diversity per sample
 sample_reads <- crete_biodiversity %>%
-    group_by(`ENA-RUN`) %>%
+    group_by(ENA_RUN) %>%
     summarise(asvs=n(),reads=sum(abundance))
 
 summary(sample_reads)
 
 sample_stats <- crete_biodiversity %>% 
-    group_by(`ENA-RUN`, classification, scientificName) %>% 
+    group_by(ENA_RUN, classification, scientificName) %>% 
     summarise(asvs=n(), reads=sum(abundance), .groups="keep") %>%
-    group_by(`ENA-RUN`,classification) %>%
+    group_by(ENA_RUN,classification) %>%
     summarise(taxa=n(),reads=sum(reads), asvs=sum(asvs), .groups="keep") %>%
 #    pivot_wider(names_from=classification,values_from=n_taxa) %>%
     ungroup()
@@ -185,7 +185,7 @@ write_delim(sample_stats,
             delim="\t")
 
 sample_stats_total <- sample_stats %>%
-    group_by(`ENA-RUN`) %>%
+    group_by(ENA_RUN) %>%
     summarise(taxa=sum(taxa),reads=sum(reads), asvs=sum(asvs))
 
 write_delim(sample_stats_total,
