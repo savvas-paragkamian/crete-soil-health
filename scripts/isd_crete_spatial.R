@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 
 ###############################################################################
 # script name: isd_crete_spatial.R

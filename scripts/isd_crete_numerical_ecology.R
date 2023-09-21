@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 
 ###############################################################################
 # script name: isd_crete_numerical_ecology.R
@@ -29,6 +29,7 @@ library(SRS)
 
 # Load data
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+
 crete_biodiversity_matrix <- readRDS("results/crete_biodiversity_matrix.RDS")
 tax_tab <- readRDS("results/tax_tab.RDS")
 
@@ -48,7 +49,7 @@ master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_
 Cmin <- min(colSums(crete_biodiversity_matrix))
 Cmax <- max(colSums(crete_biodiversity_matrix))
 summary(colSums(crete_biodiversity_matrix))
-table(colSums(crete_biodiversity_matrix) > 30000)
+table(colSums(crete_biodiversity_matrix) > 10000)
 
 ## SRS curve
 jpeg(file="results/isd_crete_srs_curve.jpeg")
@@ -76,6 +77,8 @@ length(which(rowSums(biodiversity_srs)==0))
 dim(biodiversity_srs)
 ## filter empty
 biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
+
+crete_biodiversity <- crete_biodiversity %>% filter()
 
 
 # filter also metadata and taxonomy
