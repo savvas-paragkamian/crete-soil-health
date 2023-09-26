@@ -40,6 +40,8 @@ master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", se
 
 metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
 
+metadata$sites <- gsub("_loc_*.","", metadata$source_material_identifiers)
+
 # differences of old and new data
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
@@ -78,8 +80,6 @@ length(which(rowSums(biodiversity_srs)==0))
 dim(biodiversity_srs)
 ## filter empty
 biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
-
-crete_biodiversity <- crete_biodiversity %>% filter()
 
 
 # filter also metadata and taxonomy
@@ -121,11 +121,84 @@ ggsave("figures/box_shannon.png",
        width = 23, 
        units="cm")
 
-multiple_wilcox <- function(){
 
-combn(colnames(metadata_all),2) 
+# correlations of diversity and other numerical metadata
+with(metadata_all, cor(Shannon, water_content))
 
+
+metadata_n <- metadata_all
+rownames(metadata_n) <- metadata_all$ENA_RUN
+nums <- unlist(lapply(metadata_n, is.numeric), use.names = FALSE)
+metadata_n <- metadata_n[,c(nums)]
+cc <- cor(metadata_n)
+
+cc_sp <- cor(metadata_n, method="spearman")
+
+write.table(cc_sp,
+            "results/metadata_sprearman.tsv",
+            sep="\t",
+            row.names=T,
+            col.names=NA)
+# use the vegan package, the matrix must be transposed
+biodiversity_srs_t <- t(biodiversity_srs)
+
+bray <- vegdist(biodiversity_srs_t,
+                method="bray")
+
+jaccard <- vegdist(biodiversity_srs_t,
+                method="jaccard",
+                binary=TRUE)
+
+aitchison <- vegdist(biodiversity_srs_t,
+                method="robust.aitchison")
+
+dist_long <- function(x){
+    method <- attributes(x)$method
+    df <- as.data.frame(as.matrix(x)) %>%
+    rownames_to_column() %>%
+    pivot_longer(-rowname,
+                 values_to=method,
+                 names_to="colname")
+
+    return(df)
 }
+
+bray_l <- dist_long(bray)
+jaccard_l <- dist_long(jaccard)
+
+z <- betadiver(biodiversity_srs_t, "z")
+mod <- with(metadata_all, betadisper(z, LABEL1))
+#sac <- specaccum(biodiversity_srs_t)
+
+metadata_all 
+# Ordination
+nmds <- vegan::metaMDS(biodiversity_srs_t,
+                       k=2,
+                       distance = "bray",
+                       trymax=100)
+stressplot(nmds)
+ordiplot(nmds,display="sites", cex=1.25)
+ordisurf(nmds,metadata_all$dem,main="",col="forestgreen")
+ordihull(nmds,display="sites",label=T,  groups=metadata_all$LABEL1, cex=1.25)
+ordihull(nmds,display="sites",label=T,  groups=metadata_all$elevation, cex=1.25)
+
+
+tse <- runUMAP(tse,
+               name = "UMAP",
+               assay.type = "counts",
+               ncomponents = 3)
+plotReducedDim(tse, "UMAP",
+               colour_by = "Group",
+               ncomponents = c(1:3))
+#### tests 
+
+nmds <- vegan::metaMDS(t(crete_biodiversity_matrix),
+                       k=2,
+                       distance = "bray",
+                       trymax=100)
+
+stressplot(nmds)
+ordiplot(nmds,display="sites", cex=1.25)
 
 # ancombc analysis
 
