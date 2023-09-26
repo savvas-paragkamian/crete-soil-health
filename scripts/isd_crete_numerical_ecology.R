@@ -42,6 +42,9 @@ metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
 
 metadata$sites <- gsub("_loc_*.","", metadata$source_material_identifiers)
 
+samples_loc_1 <- metadata$ENA_RUN[grep("loc_1",metadata$source_material_identifiers)]
+samples_loc_2 <- metadata$ENA_RUN[grep("loc_2",metadata$source_material_identifiers)]
+
 # differences of old and new data
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
@@ -139,6 +142,7 @@ write.table(cc_sp,
             sep="\t",
             row.names=T,
             col.names=NA)
+
 # use the vegan package, the matrix must be transposed
 biodiversity_srs_t <- t(biodiversity_srs)
 
@@ -163,14 +167,18 @@ dist_long <- function(x){
     return(df)
 }
 
+
 bray_l <- dist_long(bray)
 jaccard_l <- dist_long(jaccard)
+
+bray_l_loc <- bray_l %>% filter(colname!=rowname,rowname %in% samples_loc_1, colname %in% samples_loc_2)
+
+
 
 z <- betadiver(biodiversity_srs_t, "z")
 mod <- with(metadata_all, betadisper(z, LABEL1))
 #sac <- specaccum(biodiversity_srs_t)
 
-metadata_all 
 # Ordination
 nmds <- vegan::metaMDS(biodiversity_srs_t,
                        k=2,
