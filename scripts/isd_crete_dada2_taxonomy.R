@@ -163,7 +163,7 @@ seqtab <- makeSequenceTable(mergers)
 write.table(seqtab,
             paste0(output_path,"/taxonomy/seqtab.tsv", sep=""),
             sep="\t",
-            col.names = TRUE,
+            col.names = NA,
             row.names=TRUE)
 
 saveRDS(seqtab, paste0(output_path,"/taxonomy/seqtab.RDS", sep=""))
@@ -176,7 +176,7 @@ seqtab.nochim <- removeBimeraDenovo(seqtab,
 write.table(seqtab.nochim,
             paste0(output_path,"/taxonomy/seqtab_nochim.tsv", sep=""),
             sep="\t",
-            col.names = TRUE,
+            col.names = NA,
             row.names=TRUE)
 
 saveRDS(seqtab.nochim, paste0(output_path,"/taxonomy/seqtab_nochim.RDS", sep=""))
