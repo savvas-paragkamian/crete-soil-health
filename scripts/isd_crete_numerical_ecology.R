@@ -16,8 +16,7 @@
 ###############################################################################
 # usage:./isd_crete_numerical_ecology.R
 ###############################################################################
-library(ANCOMBC)
-library(mia)
+#library(mia)
 library(phyloseq)
 library(vegan)
 library(dplyr)
@@ -25,10 +24,9 @@ library(tibble)
 library(readr)
 library(magrittr)
 library(tidyr)
-library(SRS)
 library(ggplot2)
 
-# Load data
+################################## Load data ##################################
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 
 crete_biodiversity_matrix <- readRDS("results/crete_biodiversity_matrix.RDS")
@@ -38,68 +36,36 @@ tax_tab <- readRDS("results/tax_tab.RDS")
 
 master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
 
-metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
+metadata <- read_delim("results/metadata_all.tsv", delim="\t")
 
+## location pairs of each site
 metadata$sites <- gsub("_loc_*.","", metadata$source_material_identifiers)
+metadata$location <- gsub(".*(loc_.*)","\\1", metadata$source_material_identifiers)
 
-samples_loc_1 <- metadata$ENA_RUN[grep("loc_1",metadata$source_material_identifiers)]
-samples_loc_2 <- metadata$ENA_RUN[grep("loc_2",metadata$source_material_identifiers)]
+samples_locations <- metadata %>%
+    dplyr::select(ENA_RUN,sites,location) %>%
+    pivot_wider(id_cols=sites,
+                names_from=location,
+                values_from=ENA_RUN)
 
 # differences of old and new data
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
 
+################################## functions ##################################
+dist_long <- function(x,method){
+    method <- method
+    df <- as.data.frame(as.matrix(x)) %>%
+    rownames_to_column() %>%
+    pivot_longer(-rowname,
+                 values_to=method,
+                 names_to="colname")
 
-# SRS compositional
-
-Cmin <- min(colSums(crete_biodiversity_matrix))
-Cmax <- max(colSums(crete_biodiversity_matrix))
-summary(colSums(crete_biodiversity_matrix))
-table(colSums(crete_biodiversity_matrix) > 10000)
-
-## SRS curve
-jpeg(file="results/isd_crete_srs_curve.jpeg")
-
-SRScurve(crete_biodiversity_matrix,
-         metric = "richness",
-         step = 500,
-         xlim=c(0,Cmax),
-         xlab = "sample size",
-         ylab = "richness",
-         label = F,
-         col = c("#5A4A6F", "#E47250",  "#EBB261"))
-
-dev.off()
-
-crete_biodiversity_matrix_df <- as.data.frame(crete_biodiversity_matrix)
-rownames(crete_biodiversity_matrix_df) <- rownames(crete_biodiversity_matrix)
-biodiversity_srs <- SRS(crete_biodiversity_matrix_df, 10000, set_seed = TRUE, seed = 1)
-rownames(biodiversity_srs) <- rownames(crete_biodiversity_matrix_df)
-
-# how many samples don't have ASVs
-length(which(colSums(biodiversity_srs)==0))
-# how many ASVs have 0 abundance after the SRS
-length(which(rowSums(biodiversity_srs)==0))
-dim(biodiversity_srs)
-## filter empty
-biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
+    return(df)
+}
 
 
-# filter also metadata and taxonomy
-
-#Explore alpha-metrics
-biodiversity_index <- data.frame(
-  phyloseq::estimate_richness(otu_table(as.data.frame(biodiversity_srs),
-                                        taxa_are_rows = TRUE),
-                              measures = "Observed"),
-  phyloseq::estimate_richness(otu_table(as.data.frame(biodiversity_srs),
-                                        taxa_are_rows = TRUE),
-                              measures = "Shannon"))
-
-biodiversity_index$ENA_RUN <- rownames(biodiversity_index)
-## keep only the sample metadata after filtering
-metadata_all <- biodiversity_index %>% left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
-
+####################### Destriptors Statistics ###############################
 pw <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$vegetation_zone, p.adjust.method="BH")
 pw_e <- pairwise.wilcox.test(metadata_all$Observed, metadata_all$elevation_bin, p.adjust.method="BH")
 pw_s <- pairwise.wilcox.test(metadata_all$Shannon, metadata_all$LABEL1, p.adjust.method="BH")
@@ -143,6 +109,29 @@ write.table(cc_sp,
             row.names=T,
             col.names=NA)
 
+############################## Community analysis ###########################
+###################### Co-occurrence of samples and ASVs ####################
+
+biodiversity_m <- biodiversity_srs
+biodiversity_m[biodiversity_m > 0 ] <- 1
+biodiversity_m <- as.matrix(biodiversity_m)
+
+## matrix multiplication takes up a lot of memory and CPU, I had an error
+## Error: vector memory exhausted (limit reached?)
+## cd ~ ; touch .Renviron 
+## echo R_MAX_VSIZE=100Gb >> .Renviron
+
+asv_cooccur <- biodiversity_m %*% t(biodiversity_m)
+sample_cooccur <- t(biodiversity_m) %*% biodiversity_m
+isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
+sample_cooccur[lower.tri(sample_cooccur)] <- NA
+
+sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
+    filter(rowname!=colname) %>%
+    na.omit()
+
+
+############################## Dissimilarity ###########################
 # use the vegan package, the matrix must be transposed
 biodiversity_srs_t <- t(biodiversity_srs)
 
@@ -156,25 +145,28 @@ jaccard <- vegdist(biodiversity_srs_t,
 aitchison <- vegdist(biodiversity_srs_t,
                 method="robust.aitchison")
 
-dist_long <- function(x){
-    method <- attributes(x)$method
-    df <- as.data.frame(as.matrix(x)) %>%
-    rownames_to_column() %>%
-    pivot_longer(-rowname,
-                 values_to=method,
-                 names_to="colname")
 
-    return(df)
-}
-
-
-bray_l <- dist_long(bray)
-jaccard_l <- dist_long(jaccard)
-
-bray_l_loc <- bray_l %>% filter(colname!=rowname,rowname %in% samples_loc_1, colname %in% samples_loc_2)
+bray_l <- dist_long(bray, "bray")
+jaccard_l <- dist_long(jaccard, "jaccard")
+aitchison_l <- dist_long(aitchison, "robust.aitchison")
 
 
 
+######################## Site locations comparison #################
+dissi_loc <- samples_locations %>%
+    left_join(sample_cooccur_l,
+              by=c("loc_1"="rowname", "loc_2"="colname")) %>%
+    left_join(bray_l,
+              by=c("loc_1"="rowname", "loc_2"="colname")) %>%
+    left_join(jaccard_l,
+              by=c("loc_1"="rowname", "loc_2"="colname")) %>%
+    left_join(aitchison_l,
+              by=c("loc_1"="rowname", "loc_2"="colname"))
+
+
+summary(dissi_loc)
+
+#####################################################################
 z <- betadiver(biodiversity_srs_t, "z")
 mod <- with(metadata_all, betadisper(z, LABEL1))
 #sac <- specaccum(biodiversity_srs_t)
@@ -309,6 +301,7 @@ write_delim(highest_crete_biodiversity_s,
             "results/highest_crete_biodiversity_sample_taxonomy.tsv",
             delim="\t")
 
+################################# Taxonomy #####################################
 ## Phyla distribution
 
 phyla_dist <- crete_biodiversity %>%
