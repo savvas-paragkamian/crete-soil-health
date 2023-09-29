@@ -33,7 +33,7 @@ gawk -F"\t" 'BEGIN{print "file" "\t" "asv_id" "\t" "abundance"}(NR==1){split($0,
 gawk -F"\t" 'BEGIN{print "asv_id" "\t" "asv"}(NR==1){split($0,asv,"\t"); for (i in asv){print "asv"i "\t" asv[i]}}' seqtab_nochim.tsv > asv_fasta_ids.tsv
 
 cd ../
-/home1/s.paragkamian/isd-crete/scripts/isd_crete_reads_summary.sh -i filtered -o .
+/home1/s.paragkamian/isd-crete/scripts/isd_crete_reads_summary.sh -i filtered -o $output_path
 
 module purge
 
