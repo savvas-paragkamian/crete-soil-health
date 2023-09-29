@@ -17,8 +17,10 @@ library(dada2, lib.loc="/home1/s.paragkamian/software/R/4.1.1")
 
 # Working Environment
 # path of the sequences as retrieved from ENA
-path <- "/home1/s.paragkamian/isd-crete/ena_data"
-output_path <- "/home1/s.paragkamian/isd-crete/dada2_output"
+args = commandArgs(trailingOnly=TRUE)
+
+path <- args[1] #"/home1/s.paragkamian/isd-crete/ena_data"
+output_path <- args[2]# "/home1/s.paragkamian/isd-crete/dada2_output"
 
 setwd(output_path)
 
