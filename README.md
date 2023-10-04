@@ -43,8 +43,8 @@ The scripts of the analysis are in the `scripts` folder and cover the following 
 output: 
 
 #### task : Analysis
-1. biodiversity [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_biodiversity.R)
-2. spatial data [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_spatial.R)
+1. spatial data [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_spatial.R)
+2. biodiversity [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_biodiversity.R)
 3. numerical ecology [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_numerical_ecology.R)
 4. figures [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/figures.R)
 
