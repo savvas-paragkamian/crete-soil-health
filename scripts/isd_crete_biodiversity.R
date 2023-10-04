@@ -28,14 +28,14 @@
 ###############################################################################
 # usage:./isd_crete_biodiversity.R
 ###############################################################################
+library(magrittr)
 library(dplyr)
 library(tibble)
 library(readr)
-library(magrittr)
 library(tidyr)
-library(SRS) # normalisation
-library(phyloseq)
 library(vegan)
+library(SRS) # normalisation
+#library(phyloseq)
 #library(ANCOMBC)
 ################################## functions ##################################
 # this function keeps the last occurrence of a string separated by |
@@ -129,15 +129,18 @@ crete_biodiversity_all <- abundance_asv_long %>%
 ## very important step, we need the samples controls.
 
 # This is the MASTER dataset of Crete biodiversity and taxonomy
-### remove the asvs that don't have a taxonomy
-############################# Filtering ################################
-crete_biodiversity <- crete_biodiversity_all %>%
-    filter(!is.na(classification), abundance < 100)
 
-write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
 
+########################## Normalisation Compositionality #####################
+## total ASVs and taxonomy
+asv_no_taxonomy <- crete_biodiversity_all %>% 
+    distinct(asv,classification) %>%
+    filter(is.na(classification))
+
+print(paste0("ASVs without taxonomy: ", nrow(asv_no_taxonomy)))
 ## create a abundance matrix
-crete_biodiversity_m <- crete_biodiversity %>%
+crete_biodiversity_m <- crete_biodiversity_all %>%
+    filter(!is.na(classification)) %>%
     select(ENA_RUN, asv_id, abundance) %>%
     pivot_wider(names_from=ENA_RUN, values_from=abundance, values_fill = 0) %>%
     as.matrix()
@@ -147,7 +150,6 @@ crete_biodiversity_matrix <- apply(crete_biodiversity_matrix, 2, as.numeric)
 rownames(crete_biodiversity_matrix) <- crete_biodiversity_m[,1]
 saveRDS(crete_biodiversity_matrix, "results/crete_biodiversity_matrix.RDS")
 
-########################## Normalisation Compositionality #####################
 # SRS compositional preparation
 
 Cmin <- min(colSums(crete_biodiversity_matrix))
@@ -190,6 +192,71 @@ biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
 #### Save ######
 saveRDS(biodiversity_srs, "results/biodiversity_srs.RDS")
 
+### remove the asvs that don't have a taxonomy
+############################# Merge SRS ################################
+biodiversity_srs_l <- dist_long(biodiversity_srs,"srs_abundance")
+
+crete_biodiversity <- crete_biodiversity_all %>%
+    filter(!is.na(classification)) %>% 
+    left_join(biodiversity_srs_l, by=c("asv_id"="rowname", "ENA_RUN"="colname"))
+
+write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
+
+########################## Samples diversity #########################
+################################# Indices ###################################
+# total ASV per sample
+samples_srs_asvs <- biodiversity_srs_l %>%
+    group_by(colname) %>%
+    filter(srs_abundance>0) %>%
+    summarise(n_srs_asv=n())
+
+# Explore alpha-metrics
+biodiversity_srs_t <- t(biodiversity_srs)
+
+shannon <- data.frame(shannon = as.matrix(diversity(biodiversity_srs_t, index = "shannon")))
+observed <- data.frame(t(estimateR(biodiversity_srs_t)))
+
+biodiversity_index <- cbind(shannon,observed)
+
+biodiversity_index$ENA_RUN <- rownames(biodiversity_index)
+rownames(biodiversity_index) <- NULL
+## taxonomic, asv and read diversity per sample
+
+sample_stats <- crete_biodiversity %>% 
+    group_by(ENA_RUN, classification, scientificName) %>% 
+    summarise(asvs=n(), reads=sum(abundance),reads_srs=sum(srs_abundance,na.rm=T), .groups="keep") %>%
+    group_by(ENA_RUN,classification) %>%
+    summarise(taxa=n(),reads=sum(reads), asvs=sum(asvs), reads_srs=sum(reads_srs), .groups="keep") %>%
+#    pivot_wider(names_from=classification,values_from=n_taxa) %>%
+    dplyr::ungroup()
+
+write_delim(sample_stats,
+            "results/sample_stats.tsv",
+            delim="\t")
+
+sample_stats_total <- sample_stats %>%
+    group_by(ENA_RUN) %>%
+    summarise(taxa=sum(taxa),
+              reads=sum(reads),
+              asvs=sum(asvs),
+              reads_srs=sum(reads_srs))
+
+write_delim(sample_stats_total,
+            "results/sample_stats_total.tsv",
+            delim="\t")
+
+## keep only the sample metadata after filtering
+## filter also metadata and taxonomy
+metadata_all <-  metadata %>%
+    left_join(biodiversity_index, by=c("ENA_RUN"="ENA_RUN")) %>%
+    left_join(sample_stats_total, by=c("ENA_RUN"="ENA_RUN")) %>%
+    left_join(samples_srs_asvs, by=c("ENA_RUN"="colname"))
+
+write_delim(metadata_all,
+            "results/sample_metadata.tsv",
+            delim="\t")
+
+########################## ASV summary ###############################
 ############################ Descriptives #################################
 # Create taxonomy table of the remaining asvs
 tax_tab1 <- crete_biodiversity %>%
@@ -200,21 +267,16 @@ tax_tab <- tax_tab1[,-1]
 rownames(tax_tab) <- tax_tab1[,1]
 saveRDS(tax_tab, "results/tax_tab.RDS")
 
-########################## ASV summary ###############################
-## total ASVs and taxonomy
-asv_no_taxonomy <- crete_biodiversity_all %>% 
-    distinct(asv,classification) %>%
-    filter(is.na(classification))
-
-print(paste0("ASVs without taxonomy: ", nrow(asv_no_taxonomy)))
-
 asv_stats <- crete_biodiversity %>% 
     group_by(asv_id, classification, scientificName) %>% 
     summarise(n_samples=n(),
-              reads=sum(abundance), .groups="keep") %>%
-    ungroup()
+              reads=sum(abundance),
+              reads_srs=sum(srs_abundance, na.rm=T),
+              .groups="keep") %>%
+    dplyr::ungroup()
 
-write_delim(asv_stats,"results/asv_stats.tsv",delim="\t")
+write_delim(asv_stats,"results/asv_metadata.tsv",delim="\t")
+
 ## singletons
 singletons <- asv_stats %>% 
     filter(reads==1) %>%
@@ -225,60 +287,6 @@ print(paste0("there are ",singletons," singletons asvs"))
 ## asv and samples distribution
 asv_sample_dist <- asv_stats %>%
     group_by(n_samples) %>%
-    summarise(n_asv=n(), reads=sum(reads))
-
-## taxonomic, asv and read diversity per sample
-sample_reads <- crete_biodiversity %>%
-    group_by(ENA_RUN) %>%
-    summarise(asvs=n(),reads=sum(abundance))
-
-summary(sample_reads)
-
-sample_stats <- crete_biodiversity %>% 
-    group_by(ENA_RUN, classification, scientificName) %>% 
-    summarise(asvs=n(), reads=sum(abundance), .groups="keep") %>%
-    group_by(ENA_RUN,classification) %>%
-    summarise(taxa=n(),reads=sum(reads), asvs=sum(asvs), .groups="keep") %>%
-#    pivot_wider(names_from=classification,values_from=n_taxa) %>%
-    ungroup()
-
-write_delim(sample_stats,
-            "results/sample_stats.tsv",
-            delim="\t")
-
-sample_stats_total <- sample_stats %>%
-    group_by(ENA_RUN) %>%
-    summarise(taxa=sum(taxa),reads=sum(reads), asvs=sum(asvs))
-
-write_delim(sample_stats_total,
-            "results/sample_stats_total.tsv",
-            delim="\t")
-
-################################# Indices ###################################
-# total ASV per sample
-biodiversity_srs_l <- dist_long(biodiversity_srs,"srs_abundance")
-
-samples_asvs <- biodiversity_srs_l %>%
-    group_by(colname) %>%
-    filter(srs_abundance>0) %>%
-    summarise(n_asv=n())
-
-#Explore alpha-metrics
-biodiversity_index <- data.frame(
-  phyloseq::estimate_richness(phyloseq::otu_table(as.data.frame(biodiversity_srs),
-                                        taxa_are_rows = TRUE),
-                              measures = "Observed"),
-  phyloseq::estimate_richness(phyloseq::otu_table(as.data.frame(biodiversity_srs),
-                                        taxa_are_rows = TRUE),
-                              measures = "Shannon"))
-
-biodiversity_index$ENA_RUN <- rownames(biodiversity_index)
-## keep only the sample metadata after filtering
-## filter also metadata and taxonomy
-metadata_all <- biodiversity_index %>%
-    left_join(metadata, by=c("ENA_RUN"="ENA_RUN")) %>%
-    left_join(samples_asvs, by=c("ENA_RUN"="colname"))
-
-write_delim(metadata_all,
-            "results/metadata_all.tsv",
-            delim="\t")
+    summarise(n_asv=n(),
+              reads=sum(reads),
+              reads_srs=sum(reads_srs, na.rm=T))
