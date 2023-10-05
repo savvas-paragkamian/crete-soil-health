@@ -6,27 +6,27 @@
 # framework: ISD Crete
 ###############################################################################
 # GOAL:
-# Aim of this script is to use ASVs and the taxonomy to filter and normalise
-# the sample biodiversity
+# Aim of this script is provide a streamline of files with all the information
+# required for further analyses. That is to use ASVs and the taxonomy to filter
+# and normalise the reads of each sample biodiversity and to combine sample 
+# metadata.
 #
 ###############################################################################
 # OUTPUT:
-# the main output of this script is the crete_biodiversity_asv.tsv
+#
+# the main output of this script is 
+# 1. crete_biodiversity_asv.tsv
 # which contains the sample - asv occurrences with abundance along with 
 # taxonomic information.
-#
-# The minimum information of this file is 
-# ENA-RUN, asv, abundance
-# Taxonomy is also included.
+# 2. sample_metadata.tsv
+# 3. asv_metadata.tsv
 # 
-# Other 5 files are produced
+# Other 3 files are produced
 # crete_biodiversity_matrix.RDS, a matrix of abundances
 # tax_tab.RDS, taxonomy table with the remaining asvs
 # sample_stats.tsv
-# sample_stats_total.tsv
-# asv_stats.tsv
 ###############################################################################
-# usage:./isd_crete_biodiversity.R
+# usage:./scripts/isd_crete_biodiversity.R
 ###############################################################################
 library(magrittr)
 library(dplyr)
@@ -35,7 +35,6 @@ library(readr)
 library(tidyr)
 library(vegan)
 library(SRS) # normalisation
-#library(phyloseq)
 #library(ANCOMBC)
 ################################## functions ##################################
 # this function keeps the last occurrence of a string separated by |
@@ -64,6 +63,10 @@ asv_fasta <- read_delim("dada2_output/taxonomy/asv_fasta_ids.tsv", delim="\t")
 taxa_asv <- readRDS("dada2_output/taxonomy/dada2_taxonomy.RDS")
 species_asv <- readRDS("dada2_output/taxonomy/dada2_taxa_species.RDS")
 metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
+
+## location pairs of each site
+metadata$sites <- gsub("_loc_*.","", metadata$source_material_identifiers)
+metadata$location <- gsub(".*(loc_.*)","\\1", metadata$source_material_identifiers)
 
 ########################## transform the matrices to long tables ##########################
 
@@ -222,28 +225,31 @@ biodiversity_index$ENA_RUN <- rownames(biodiversity_index)
 rownames(biodiversity_index) <- NULL
 ## taxonomic, asv and read diversity per sample
 
-sample_stats <- crete_biodiversity %>% 
+sample_taxonomy_stats <- crete_biodiversity %>% 
     group_by(ENA_RUN, classification, scientificName) %>% 
-    summarise(asvs=n(), reads=sum(abundance),reads_srs=sum(srs_abundance,na.rm=T), .groups="keep") %>%
+    summarise(asvs=n(),
+              reads=sum(abundance),
+              reads_srs=sum(srs_abundance,na.rm=T),
+              .groups="keep") %>%
     group_by(ENA_RUN,classification) %>%
-    summarise(taxa=n(),reads=sum(reads), asvs=sum(asvs), reads_srs=sum(reads_srs), .groups="keep") %>%
+    summarise(taxa=n(),
+              reads=sum(reads),
+              asvs=sum(asvs),
+              reads_srs=sum(reads_srs),
+              .groups="keep") %>%
 #    pivot_wider(names_from=classification,values_from=n_taxa) %>%
     dplyr::ungroup()
 
-write_delim(sample_stats,
-            "results/sample_stats.tsv",
+write_delim(sample_taxonomy_stats,
+            "results/sample_taxonomy_stats.tsv",
             delim="\t")
 
-sample_stats_total <- sample_stats %>%
+sample_stats_total <- sample_taxonomy_stats %>%
     group_by(ENA_RUN) %>%
     summarise(taxa=sum(taxa),
               reads=sum(reads),
               asvs=sum(asvs),
               reads_srs=sum(reads_srs))
-
-write_delim(sample_stats_total,
-            "results/sample_stats_total.tsv",
-            delim="\t")
 
 ## keep only the sample metadata after filtering
 ## filter also metadata and taxonomy
@@ -257,7 +263,6 @@ write_delim(metadata_all,
             delim="\t")
 
 ########################## ASV summary ###############################
-############################ Descriptives #################################
 # Create taxonomy table of the remaining asvs
 tax_tab1 <- crete_biodiversity %>%
     distinct(asv_id, Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
@@ -290,3 +295,14 @@ asv_sample_dist <- asv_stats %>%
     summarise(n_asv=n(),
               reads=sum(reads),
               reads_srs=sum(reads_srs, na.rm=T))
+
+### highest species biodiversity sample
+
+crete_biodiversity_s <- crete_biodiversity %>%
+    distinct(ENA_RUN, Species) %>% 
+    group_by(ENA_RUN) %>%
+    summarise(Species=n())
+
+print("sample with the highest microbial species diversity")
+crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
+
