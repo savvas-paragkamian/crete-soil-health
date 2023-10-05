@@ -9,31 +9,35 @@ library(jpeg)
 library(raster)
 library(scales)
 
-# load data
+################################## Load data ##################################
 ## biodiversity
+crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
 
-asv_sample_dist <- read_delim("../results/asv_sample_dist.tsv",delim="\t")
+tax_tab <- readRDS("results/tax_tab.RDS")
 
+# Metadata
 
+metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
 ## spatial
-locations_spatial <- read_delim("../spatial_data/ISD_sites_coordinates.tsv", delim="\t",col_names=T) %>%
+locations_spatial <- read_delim("spatial_data/ISD_sites_coordinates.tsv", delim="\t",col_names=T) %>%
     st_as_sf(coords=c("longitude", "latitude"),
              remove=F,
              crs="WGS84")
-crete_shp <- sf::st_read("../spatial_data/crete/crete.shp")
-crete_peaks <- read_delim("../spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
+crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
+crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
     st_as_sf(coords=c("X", "Y"),
              remove=F,
              crs="WGS84")
 
-clc_crete_shp <- st_read("../spatial_data/clc_crete_shp/clc_crete_shp.shp")
-natura_crete <- sf::st_read("../spatial_data/natura2000/natura2000_crete.shp")
-wdpa_crete <- sf::st_read("../spatial_data/wdpa_crete/wdpa_crete.shp")
+clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
+natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
+wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp")
 natura_crete_land <- st_intersection(natura_crete, crete_shp)
 natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
 # raster DEM hangling
-dem_crete <- raster("../spatial_data/dem_crete/dem_crete.tif")
+dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
@@ -81,7 +85,7 @@ crete_base <- ggplot() +
           legend.box.background = element_blank())
 
 
-ggsave("../figures/fig1a.tiff",
+ggsave("figures/fig1a.tiff",
        plot=crete_base,
        height = 10,
        width = 20,
@@ -89,7 +93,7 @@ ggsave("../figures/fig1a.tiff",
        units="cm",
        device="tiff")
 
-ggsave("../figures/fig1a.png",
+ggsave("figures/fig1a.png",
        plot=crete_base,
        height = 10,
        width = 20,
@@ -143,7 +147,7 @@ crete_corine <- ggplot() +
           legend.key.size = unit(8, "mm"), 
           legend.text=element_text(size=8))
 
-ggsave("../figures/Fig1b.tiff", 
+ggsave("figures/Fig1b.tiff", 
        plot=crete_corine, 
        height = 10, 
        width = 20,
@@ -151,7 +155,7 @@ ggsave("../figures/Fig1b.tiff",
        units="cm",
        device="tiff")
 
-ggsave("../figures/Fig1b.png", 
+ggsave("figures/Fig1b.png", 
        plot=crete_corine, 
        height = 10, 
        width = 20,
@@ -169,7 +173,7 @@ fig1 <- ggarrange(crete_base,crete_corine,
           font.label=list(color="black",size=22),
           legend="bottom") + bgcolor("white")
 
-ggsave("../figures/Fig1.tiff", 
+ggsave("figures/Fig1.tiff", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -177,7 +181,7 @@ ggsave("../figures/Fig1.tiff",
        units="cm",
        device="tiff")
 
-ggsave("../figures/Fig1.png", 
+ggsave("figures/Fig1.png", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -185,7 +189,7 @@ ggsave("../figures/Fig1.png",
        units="cm",
        device="png")
 
-ggsave("../figures/Fig1.pdf", 
+ggsave("figures/Fig1.pdf", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -193,14 +197,15 @@ ggsave("../figures/Fig1.pdf",
        units="cm",
        device="pdf")
 
-ggsave("../figures/Fig1-small.png", 
+ggsave("figures/Fig1-small.png", 
        plot=fig1, 
        height = 30, 
        width = 30,
        dpi = 300, 
        units="cm",
        device="png")
-# Biodiversity statistics
+
+######################### Biodiversity statistics ###############################
 
 ## ASVs
 asv_sample_dist_plot <- ggplot() +
@@ -217,10 +222,30 @@ asv_sample_dist_plot <- ggplot() +
           axis.title.y=element_text(face="bold", size=13),
           legend.position = c(0.88, 0.1))
 
-ggsave("../figures/fig_asv_n_samples.png",
+ggsave("figures/fig_asv_n_samples.png",
        plot=asv_sample_dist_plot,
        device="png",
        height = 20,
        width = 23,
        units="cm")
 
+################################# Taxonomy #####################################
+## Phyla distribution
+
+phyla_dist <- crete_biodiversity %>%
+    group_by(sampleID,Phylum) %>%
+    summarise(sum_abundance=sum(abundance), .groups="keep") %>%
+    na.omit(Phylum)
+
+total_phyla_dist <- phyla_dist %>% 
+    group_by(Phylum) %>%
+    summarise(sum_abundance=sum(sum_abundance),
+              n_samples=n()) %>%
+    mutate(sampleID="All samples") %>%
+    arrange(desc(n_samples))
+
+
+## create bar plots for each sample at family level, class level, Phylum etc
+## shannon per sample
+## bray curtis per sample
+## 
