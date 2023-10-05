@@ -1,4 +1,19 @@
 #!/usr/bin/Rscript
+###############################################################################
+# script name: figures.R
+# developed by: Savvas Paragkamian
+# framework: ISD Crete
+###############################################################################
+# GOAL:
+# Aim of this script is to load the results and with some minor counts and 
+# transformations make publication-quality figures. That includes maps, bar 
+# plots, scatterplots etc.
+###############################################################################
+# OUTPUT:
+#
+###############################################################################
+# usage:./scripts/figures.R
+###############################################################################
 
 # load packages and functions
 library(tidyverse)
@@ -41,7 +56,7 @@ dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
-
+##################################### MAPS #####################################
 # Colorblind palette
 palette.colors(palette = "Okabe-Ito")
 # Crete figures
@@ -208,9 +223,25 @@ ggsave("figures/Fig1-small.png",
 ######################### Biodiversity statistics ###############################
 
 ## ASVs
+
+asv_sample_dist_t <- asv_metadata %>%
+    group_by(n_samples) %>%
+    summarise(n_asv=n()) %>% 
+    mutate(classification="total")
+
+asv_sample_dist_c <- asv_metadata %>%
+    group_by(n_samples, classification) %>%
+    summarise(n_asv=n(), .groups="keep")
+
+asv_sample_dist <- rbind(asv_sample_dist_t, asv_sample_dist_c)
+
+
+### do the generalist and specialist
+### mean abundance and n sites
+
 asv_sample_dist_plot <- ggplot() +
     geom_point(asv_sample_dist,
-               mapping=aes(x=n_asv, y=n_samples)) +
+               mapping=aes(x=n_asv, y=n_samples, color=classification)) +
     scale_y_continuous(breaks=seq(0,150,10), name="Number of samples") +
     scale_x_continuous(trans='log10', name = "ASVs",
                      breaks=trans_breaks('log10', function(x) 10^x),
