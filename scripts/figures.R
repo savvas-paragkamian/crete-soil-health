@@ -221,22 +221,88 @@ ggsave("figures/Fig1-small.png",
        device="png")
 
 ################################# Taxonomy #####################################
-## Phyla distribution
+## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 
-phyla_dist <- crete_biodiversity %>%
-    group_by(sampleID,Phylum) %>%
-    summarise(sum_abundance=sum(abundance), .groups="keep") %>%
-    na.omit(Phylum)
+phyla_samples_summary <- crete_biodiversity %>%
+    filter(!is.na(srs_abundance), !is.na(Phylum)) %>%
+    group_by(ENA_RUN,Phylum) %>%
+    summarise(asvs=n(),
+              reads_srs_mean=mean(srs_abundance),
+              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum))
+#    na.omit(Phylum)
 
-total_phyla_dist <- phyla_dist %>% 
+phyla_samples_m <- phyla_samples_summary %>%
+    ungroup() %>%
+    dplyr::select(ENA_RUN,relative_srs,Phylum) %>%
+    pivot_wider(names_from=Phylum,
+                values_from=relative_srs,
+                values_fill=0) %>%
+    as.data.frame()
+
+rownames(phyla_samples_m) <- phyla_samples_m[,1]
+phyla_samples_m <- phyla_samples_m[,-1]
+
+library(vegan)
+dist_long <- function(x,method){
+    method <- method
+    df <- as.data.frame(as.matrix(x)) %>%
+    rownames_to_column() %>%
+    pivot_longer(-rowname,
+                 values_to=method,
+                 names_to="colname")
+
+    return(df)
+}
+bray <- vegdist(phyla_samples_m,
+                method="bray")
+plot(hclust(bray))
+
+bray_phy <- vegdist(t(phyla_samples_m),method="bray")
+plot(hclust(bray_phy))
+
+bray_l <- dist_long(bray, "bray")
+biodiversity_srs_t <- phyla_samples_m
+
+z <- betadiver(biodiversity_srs_t, "z")
+mod <- with(metadata, betadisper(z, LABEL1))
+#sac <- specaccum(biodiversity_srs_t)
+
+# Ordination
+nmds <- vegan::metaMDS(biodiversity_srs_t,
+                       k=2,
+                       distance = "bray",
+                       trymax=100)
+metadata <- metadata %>%
+    filter(ENA_RUN %in% rownames(phyla_samples_m))
+
+stressplot(nmds)
+ordiplot(nmds,display="sites", cex=1.25)
+ordisurf(nmds,metadata$dem,main="",col="forestgreen")
+ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
+ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
+
+
+#####
+phyla_dist_samples <- phyla_samples_summary %>% 
     group_by(Phylum) %>%
-    summarise(sum_abundance=sum(sum_abundance),
-              n_samples=n()) %>%
-    mutate(sampleID="All samples") %>%
-    arrange(desc(n_samples))
+    summarise(n_samples=n(),
+              total_asvs=sum(asvs),
+              total_reads_srs=sum(reads_srs_sum),
+              average_relative=mean(relative_srs)) %>%
+    arrange(desc(average_relative)) %>% 
+    as.data.frame()
+
+rownames(phyla_dist_samples) <- phyla_dist_samples$Phylum
+phyla_dist_samples <- phyla_dist_samples[,-1]
 
 
+plot(hclust(dist(phyla_dist_samples)))
+
+phyla_barplot <- ggplot() +
+    geom_bar(position="stack", stat="identity")
 ## create bar plots for each sample at family level, class level, Phylum etc
 ## 
 
