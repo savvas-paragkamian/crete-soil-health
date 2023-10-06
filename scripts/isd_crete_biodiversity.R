@@ -26,6 +26,8 @@
 # tax_tab.RDS, taxonomy table with the remaining asvs
 # sample_stats.tsv
 ###############################################################################
+# RUNNING TIME: 9 minutes
+###############################################################################
 # usage:./scripts/isd_crete_biodiversity.R
 ###############################################################################
 library(magrittr)
@@ -277,6 +279,8 @@ asv_stats <- crete_biodiversity %>%
     summarise(n_samples=n(),
               reads=sum(abundance),
               reads_srs=sum(srs_abundance, na.rm=T),
+              reads_srs_mean=mean(srs_abundance, na.rm=T),
+              reads_srs_sd=sd(srs_abundance, na.rm=T),
               .groups="keep") %>%
     dplyr::ungroup()
 
