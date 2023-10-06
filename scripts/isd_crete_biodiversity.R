@@ -21,10 +21,11 @@
 # 2. sample_metadata.tsv
 # 3. asv_metadata.tsv
 # 
-# Other 3 files are produced
+# Other 4 files are produced
 # crete_biodiversity_matrix.RDS, a matrix of abundances
 # tax_tab.RDS, taxonomy table with the remaining asvs
 # sample_stats.tsv
+# phyla_samples_summary.tsv
 ###############################################################################
 # RUNNING TIME: 9 minutes
 ###############################################################################
@@ -310,3 +311,17 @@ crete_biodiversity_s <- crete_biodiversity %>%
 print("sample with the highest microbial species diversity")
 crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
+################################# Taxonomy #####################################
+## Phyla distribution, average relative abundance and ubiquity
+
+phyla_samples_summary <- crete_biodiversity %>%
+    filter(!is.na(srs_abundance), !is.na(Phylum)) %>%
+    group_by(ENA_RUN,Phylum) %>%
+    summarise(asvs=n(),
+              reads_srs_mean=mean(srs_abundance),
+              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum))
+#    na.omit(Phylum)
+
+write_delim(phyla_samples_summary,"results/phyla_samples_summary.tsv",delim="\t")
