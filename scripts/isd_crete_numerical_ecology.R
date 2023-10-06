@@ -64,25 +64,6 @@ pw_e <- pairwise.wilcox.test(metadata$Observed, metadata_all$elevation_bin, p.ad
 pw_s <- pairwise.wilcox.test(metadata$Shannon, metadata_all$LABEL1, p.adjust.method="BH")
 print(pw)
 
-
-box_shannon <- ggplot(data=metadata, mapping=aes(x=LABEL2, y=Shannon))+
-    geom_boxplot()+
-    geom_jitter(width = 0.2)+
-    theme_bw()+
-    theme(axis.text.x = element_text(face="bold",
-                                     size = 10,
-                                     angle = 45,
-                                     vjust = 1,
-                                     hjust=1))
-
-ggsave("figures/box_shannon.png", 
-       plot=box_shannon, 
-       device="png", 
-       height = 23, 
-       width = 23, 
-       units="cm")
-
-
 # correlations of diversity and other numerical metadata
 with(metadata, cor(Shannon, water_content))
 
