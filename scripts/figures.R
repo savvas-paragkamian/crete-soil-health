@@ -221,8 +221,64 @@ ggsave("figures/Fig1-small.png",
        device="png")
 
 ######################### Biodiversity statistics ###############################
+## ASVs generalists and specialists
+## Abundance (y axis) and occupancy (x axis) plot
 
-## ASVs
+asv_stat_sample <- ggplot() +
+    geom_point(asv_metadata,
+               mapping=aes(x=n_samples, y=reads_srs_mean, color=classification)) +
+    geom_errorbar(asv_metadata,
+                  mapping=aes(x=n_samples,
+                              y=reads_srs_mean,
+                              ymin=reads_srs_mean-reads_srs_sd,
+                              ymax=reads_srs_mean+reads_srs_sd,
+                              alpha=0.5, colour=classification))+
+    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+#    scale_y_continuous(trans='log10', name = "ASVs",
+#                     breaks=trans_breaks('log10', function(x) 10^x),
+#                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.88, 0.8))
+
+ggsave("figures/fig_asv_generalists.png",
+       plot=asv_stat_sample,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+asv_stat_sample_cla <- ggplot(data= asv_metadata, mapping=aes(x=n_samples, y=reads_srs_mean)) +
+    geom_point(asv_metadata,
+               mapping=aes(x=n_samples, y=reads_srs_mean, color=classification)) +
+    geom_errorbar(asv_metadata,
+                  mapping=aes(x=n_samples,
+                              y=reads_srs_mean,
+                              ymin=reads_srs_mean-reads_srs_sd,
+                              ymax=reads_srs_mean+reads_srs_sd,
+                              alpha=0.5, colour=classification))+
+    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+#    scale_y_continuous(trans='log10', name = "ASVs",
+#                     breaks=trans_breaks('log10', function(x) 10^x),
+#                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = "bottom") + 
+    facet_wrap(vars(classification))
+
+ggsave("figures/fig_asv_generalists_cla.png",
+       plot=asv_stat_sample_cla,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+######################### ASVs distribution vs samples #####################
 
 asv_sample_dist_t <- asv_metadata %>%
     group_by(n_samples) %>%
@@ -251,7 +307,7 @@ asv_sample_dist_plot <- ggplot() +
           axis.text = element_text(size=13),
           axis.title.x=element_text(face="bold", size=13),
           axis.title.y=element_text(face="bold", size=13),
-          legend.position = c(0.88, 0.1))
+          legend.position = c(0.88, 0.8))
 
 ggsave("figures/fig_asv_n_samples.png",
        plot=asv_sample_dist_plot,
@@ -280,3 +336,24 @@ total_phyla_dist <- phyla_dist %>%
 ## shannon per sample
 ## bray curtis per sample
 ## 
+
+########################## Sample diversity #######################
+###
+###
+box_shannon <- ggplot(data=metadata, mapping=aes(x=LABEL2, y=shannon))+
+    geom_boxplot()+
+    geom_jitter(width = 0.2)+
+    theme_bw()+
+    theme(axis.text.x = element_text(face="bold",
+                                     size = 10,
+                                     angle = 45,
+                                     vjust = 1,
+                                     hjust=1))
+
+ggsave("figures/box_shannon.png", 
+       plot=box_shannon, 
+       device="png", 
+       height = 23, 
+       width = 23, 
+       units="cm")
+
