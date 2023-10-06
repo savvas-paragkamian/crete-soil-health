@@ -29,7 +29,7 @@ library(ggplot2)
 ################################## Load data ##################################
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
-
+phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
 #crete_biodiversity_matrix <- readRDS("results/crete_biodiversity_matrix.RDS")
 biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
 tax_tab <- readRDS("results/tax_tab.RDS")
@@ -123,6 +123,21 @@ bray_l <- dist_long(bray, "bray")
 jaccard_l <- dist_long(jaccard, "jaccard")
 aitchison_l <- dist_long(aitchison, "robust.aitchison")
 
+########################## Phylum level ########################
+## Phyla distribution, average relative abundance and ubiquity
+## Biogeography of soil bacteria and archaea across France
+
+phyla_dist_samples <- phyla_samples_summary %>% 
+    group_by(Phylum) %>%
+    summarise(n_samples=n(),
+              total_asvs=sum(asvs),
+              total_reads_srs=sum(reads_srs_sum),
+              average_relative=mean(relative_srs)) %>%
+    arrange(desc(average_relative)) %>% 
+    as.data.frame()
+
+rownames(phyla_dist_samples) <- phyla_dist_samples$Phylum
+phyla_dist_samples <- phyla_dist_samples[,-1]
 
 
 ######################## Site locations comparison #################
