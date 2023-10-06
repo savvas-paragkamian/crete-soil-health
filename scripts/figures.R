@@ -220,9 +220,29 @@ ggsave("figures/Fig1-small.png",
        units="cm",
        device="png")
 
-######################### Biodiversity statistics ###############################
-## ASVs generalists and specialists
+################################# Taxonomy #####################################
+## Phyla distribution
+## Biogeography of soil bacteria and archaea across France
+
+phyla_dist <- crete_biodiversity %>%
+    group_by(sampleID,Phylum) %>%
+    summarise(sum_abundance=sum(abundance), .groups="keep") %>%
+    na.omit(Phylum)
+
+total_phyla_dist <- phyla_dist %>% 
+    group_by(Phylum) %>%
+    summarise(sum_abundance=sum(sum_abundance),
+              n_samples=n()) %>%
+    mutate(sampleID="All samples") %>%
+    arrange(desc(n_samples))
+
+
+## create bar plots for each sample at family level, class level, Phylum etc
+## 
+
+########################### ASVs generalists and specialists ##################
 ## Abundance (y axis) and occupancy (x axis) plot
+## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
 
 asv_stat_sample <- ggplot() +
     geom_point(asv_metadata,
@@ -316,44 +336,122 @@ ggsave("figures/fig_asv_n_samples.png",
        width = 23,
        units="cm")
 
-################################# Taxonomy #####################################
-## Phyla distribution
 
-phyla_dist <- crete_biodiversity %>%
-    group_by(sampleID,Phylum) %>%
-    summarise(sum_abundance=sum(abundance), .groups="keep") %>%
-    na.omit(Phylum)
+##################### Sample Diversity boxplots #########################
+# Metadata to long format for diversity indices
+metadata_diversity <- metadata %>%
+    pivot_longer(cols=c(asvs,
+                        shannon,
+                        S.obs,
+                        S.chao1,
+                        se.chao1,
+                        S.ACE,
+                        se.ACE,
+                        taxa),
+                 names_to="diversity",
+                 values_to="value") %>%
+    as.data.frame()
+## function
+diversity_boxplot <- function(dataset, x_axis, y_axis, grouping_var){
+    plotname <- paste0("figures/",
+                       grouping_var,
+                       "_",
+                       x_axis,
+                       "_boxplot.png")
+    x_lab <- x_axis
+    y_lab <- y_axis
+    dataset$x_axis <- dataset[,x_axis]
+    dataset$y_axis <- dataset[,y_axis]
+    dataset$grouping_var <- dataset[,grouping_var]
 
-total_phyla_dist <- phyla_dist %>% 
-    group_by(Phylum) %>%
-    summarise(sum_abundance=sum(sum_abundance),
-              n_samples=n()) %>%
-    mutate(sampleID="All samples") %>%
-    arrange(desc(n_samples))
+    box_diversity <- ggplot(dataset, mapping=aes(x=x_axis, y=y_axis)) +
+        geom_boxplot()+
+        geom_jitter(width = 0.2)+
+        xlab(x_lab)+
+        ylab(y_lab) +
+        theme_bw()+
+        theme(axis.text.x = element_text(face="bold",
+                                         size = 10,
+                                         angle = 45,
+                                         vjust = 1,
+                                         hjust=1)) +
+        facet_wrap(vars(diversity), scales = "free")
+    
+    ggsave(plotname, 
+           plot=box_diversity, 
+           device="png", 
+           height = 45, 
+           width = 30, 
+           units="cm")
+}
+
+# Numerical variables to plot against diversity indices
+vars <- c( "latitude",
+          "longitude",
+          "elevation",
+          "total_nitrogen",
+          "water_content",
+          "total_organic_carbon",
+          "sample_volume_or_weight_for_DNA_extraction",
+          "DNA_concentration",
+          "route")
+
+for (var in vars){
+    
+    gradient_scatterplot(metadata_diversity, var, "value", "diversity")
+}
+#################### Sample diversity gradients ######################
+## similar to Structure and function of the global topsoil microbiome but
+## without the statistic test.
+
+gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
+    
+    ## the dataset must be a dataframe, not a tibble, the colnames
+    ## must characters
+
+    ## keep the character names of column names to pass to plot
+    ##
+    plotname <- paste0("figures/",
+                       grouping_var,
+                       "_",
+                       x_axis,
+                       "_gradient.png")
+    x_lab <- x_axis
+    y_lab <- y_axis
+    dataset$x_axis <- dataset[,x_axis]
+    dataset$y_axis <- dataset[,y_axis]
+    dataset$grouping_var <- dataset[,grouping_var]
+
+    gradient <- ggplot(dataset, mapping=aes(x=x_axis, y=y_axis)) +
+        geom_point()+
+        xlab(x_lab)+
+        ylab(y_lab) +
+        theme_bw() +
+        theme(panel.grid = element_blank(),
+              axis.text = element_text(size=13),
+              axis.title.x=element_text(face="bold", size=13),
+              axis.title.y=element_text(face="bold", size=13),
+              legend.position = c(0.88, 0.8)) +
+        facet_wrap(vars(diversity), scales = "free")
+   
+    ggsave(plotname,
+           plot=gradient,
+           device="png",
+           height = 20,
+           width = 23,
+           units="cm")
+}
+
+# Categorical variables to plot against diversity indices
+cats <- c("vegetation_zone", "LABEL1","LABEL2","LABEL3","elevation_bin")
+
+for (cat in cats){
+    diversity_boxplot(metadata_diversity, cat, "value", "diversity")
+}
 
 
-## create bar plots for each sample at family level, class level, Phylum etc
-## shannon per sample
-## bray curtis per sample
-## 
+######################## Community ################################
 
-########################## Sample diversity #######################
-###
-###
-box_shannon <- ggplot(data=metadata, mapping=aes(x=LABEL2, y=shannon))+
-    geom_boxplot()+
-    geom_jitter(width = 0.2)+
-    theme_bw()+
-    theme(axis.text.x = element_text(face="bold",
-                                     size = 10,
-                                     angle = 45,
-                                     vjust = 1,
-                                     hjust=1))
 
-ggsave("figures/box_shannon.png", 
-       plot=box_shannon, 
-       device="png", 
-       height = 23, 
-       width = 23, 
-       units="cm")
+
 
