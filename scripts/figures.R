@@ -285,16 +285,6 @@ ggsave("figures/genera_phyla_stats.png",
        units="cm")
 
 #################### testing ##############
-phyla_samples_m <- phyla_samples_summary %>%
-    dplyr::select(ENA_RUN,relative_srs,Phylum) %>%
-    pivot_wider(names_from=Phylum,
-                values_from=relative_srs,
-                values_fill=0) %>%
-    as.data.frame()
-
-rownames(phyla_samples_m) <- phyla_samples_m[,1]
-phyla_samples_m <- phyla_samples_m[,-1]
-
 library(vegan)
 dist_long <- function(x,method){
     method <- method
@@ -306,27 +296,62 @@ dist_long <- function(x,method){
 
     return(df)
 }
-bray <- vegdist(phyla_samples_m,
+
+##### phyla
+phyla_samples_m <- phyla_samples_summary %>%
+    dplyr::select(ENA_RUN,relative_srs,Phylum) %>%
+    pivot_wider(names_from=Phylum,
+                values_from=relative_srs,
+                values_fill=0) %>%
+    as.data.frame()
+
+rownames(phyla_samples_m) <- phyla_samples_m[,1]
+phyla_samples_m <- phyla_samples_m[,-1]
+
+
+#### genera
+genera_phyla_samples <- crete_biodiversity %>%
+    filter(!is.na(srs_abundance), !is.na(Phylum),!is.na(Genus)) %>%
+    group_by(Phylum,Genus,ENA_RUN) %>%
+    summarise(asvs=n(),
+              reads_srs_mean=mean(srs_abundance),
+              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
+    ungroup()
+
+genera_samples_m <- genera_phyla_samples %>%
+    dplyr::select(ENA_RUN,relative_srs,Genus) %>%
+    pivot_wider(names_from=Genus,
+                values_from=relative_srs,
+                values_fill=0) %>%
+    as.data.frame()
+
+rownames(genera_samples_m) <- genera_samples_m[,1]
+genera_samples_m <- genera_samples_m[,-1]
+
+community_matrix <- genera_samples_m
+
+bray <- vegdist(community_matrix,
                 method="bray")
 plot(hclust(bray))
 
-bray_phy <- vegdist(t(phyla_samples_m),method="bray")
+bray_phy <- vegdist(t(community_matrix),method="bray")
 plot(hclust(bray_phy))
 
 bray_l <- dist_long(bray, "bray")
-biodiversity_srs_t <- phyla_samples_m
 
-z <- betadiver(biodiversity_srs_t, "z")
+z <- betadiver(community_matrix, "z")
 mod <- with(metadata, betadisper(z, LABEL1))
 #sac <- specaccum(biodiversity_srs_t)
 
 # Ordination
-nmds <- vegan::metaMDS(biodiversity_srs_t,
+nmds <- vegan::metaMDS(community_matrix,
                        k=2,
                        distance = "bray",
                        trymax=100)
 metadata <- metadata %>%
-    filter(ENA_RUN %in% rownames(phyla_samples_m))
+    filter(ENA_RUN %in% rownames(community_matrix))
 
 stressplot(nmds)
 ordiplot(nmds,display="sites", cex=1.25)

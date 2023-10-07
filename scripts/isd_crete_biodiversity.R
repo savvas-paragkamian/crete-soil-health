@@ -369,14 +369,18 @@ write_delim(phyla_stats,"results/phyla_stats.tsv",delim="\t")
 
 ## Genera stats
 
-genera_phyla_stats <- crete_biodiversity %>%
+genera_phyla_samples <- crete_biodiversity %>%
     filter(!is.na(srs_abundance), !is.na(Phylum),!is.na(Genus)) %>%
     group_by(Phylum,Genus,ENA_RUN) %>%
     summarise(asvs=n(),
               reads_srs_mean=mean(srs_abundance),
               reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
     group_by(ENA_RUN) %>%
-    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) 
+
+write_delim(genera_phyla_samples,"results/genera_phyla_samples.tsv",delim="\t")
+
+genera_phyla_stats <- genera_phyla_samples %>%
     group_by(Phylum,Genus) %>%
     summarise(n_samples=n(),
               average_relative=mean(relative_srs), 
