@@ -266,7 +266,7 @@ ggsave("figures/representative_phyla_samples.png",
        width = 23,
        units="cm")
 
-################## Phyla and genera  #########################
+################################ Phyla and genera  #########################
 
 genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 
@@ -347,10 +347,11 @@ plot(hclust(dist(phyla_dist_samples_d),"average" ))
 ## create bar plots for each sample at family level, class level, Phylum etc
 ## 
 
-########################### ASVs generalists and specialists ##################
+########################### Generalists and specialists ##################
 ## Abundance (y axis) and occupancy (x axis) plot
 ## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
 
+################## ASV  #################################
 asv_stat_sample <- ggplot() +
     geom_point(asv_metadata,
                mapping=aes(x=n_samples, y=reads_srs_mean, color=classification)) +
@@ -405,6 +406,50 @@ ggsave("figures/fig_asv_generalists_cla.png",
        height = 20,
        width = 23,
        units="cm")
+
+############################## genera ##########
+
+genera_stat_sample <- ggplot() +
+    geom_point(genera_phyla_stats,
+               mapping=aes(x=n_samples,
+                           y=reads_srs_mean,
+                           color=Phylum, size=average_relative)) +
+#    geom_errorbar(genera_phyla_stats,
+#                  mapping=aes(x=n_samples,
+#                              y=reads_srs_mean,
+#                              ymin=reads_srs_mean-reads_srs_sd,
+#                              ymax=reads_srs_mean+reads_srs_sd,
+#                              alpha=0.5, colour=Phylum))+
+    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+#    scale_y_continuous(trans='log10', name = "ASVs",
+#                     breaks=trans_breaks('log10', function(x) 10^x),
+#                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = "bottom")
+
+ggsave("figures/fig_genera_generalists.png",
+       plot=genera_stat_sample,
+       device="png",
+       height = 20,
+       width = 35,
+       units="cm")
+
+genera_stat_sample_f <- genera_stat_sample + facet_wrap(vars(Phylum))
+
+ggsave("figures/fig_genera_generalists_facet.png",
+       plot=genera_stat_sample_f,
+       device="png",
+       height = 50,
+       width = 80,
+       units="cm")
+
+
+
+
 ######################### ASVs distribution vs samples #####################
 
 asv_sample_dist_t <- asv_metadata %>%

@@ -381,6 +381,8 @@ genera_phyla_stats <- crete_biodiversity %>%
     summarise(n_samples=n(),
               average_relative=mean(relative_srs), 
               total_asvs=sum(asvs),
+              reads_srs_mean=mean(reads_srs_sum),
+              reads_srs_sd=sd(reads_srs_sum),
               total_reads_srs=sum(reads_srs_sum),
               proportion_sample=n_samples/total_samples, .groups="keep") %>%
     group_by(Phylum) %>%
