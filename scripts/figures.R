@@ -224,18 +224,68 @@ ggsave("figures/Fig1-small.png",
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 
-phyla_samples_summary <- crete_biodiversity %>%
-    filter(!is.na(srs_abundance), !is.na(Phylum)) %>%
-    group_by(ENA_RUN,Phylum) %>%
-    summarise(asvs=n(),
-              reads_srs_mean=mean(srs_abundance),
-              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
-    group_by(ENA_RUN) %>%
-    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum))
-#    na.omit(Phylum)
+phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
 
+############# Representative phyla of Cretan soils ########################
+
+phyla_stats <- read_delim("results/phyla_stats.tsv",delim="\t")
+
+representative_phyla_rel <- ggplot(phyla_stats,
+       aes(x = average_relative, y = reorder(Phylum, average_relative))) +
+  geom_point(size = 2) +  # Use a larger dot
+  scale_x_log10(labels = label_log()) +
+#  scale_x_continuous()+
+  theme_bw() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
+  )
+
+ggsave("figures/representative_phyla_rel.png",
+       plot=representative_phyla_rel,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+representative_phyla_samples <- ggplot(phyla_stats,
+       aes(x = proportion_sample, y = reorder(Phylum, proportion_sample))) +
+  geom_point(size = 2) +  # Use a larger dot
+  theme_bw() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
+  )
+
+ggsave("figures/representative_phyla_samples.png",
+       plot=representative_phyla_samples,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+################## Phyla and genera  #########################
+
+genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
+
+phyla_genera_bar <- ggplot(genera_phyla_stats, mapping=aes(x=Phylum, y=average_relative,fill=Genus)) +
+    geom_col(position="stack", stat="identity") +
+    coord_flip()+
+    theme_bw()+
+    theme(legend.position="none")
+
+
+ggsave("figures/genera_phyla_stats.png",
+       plot=phyla_genera_bar,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+#################### testing ##############
 phyla_samples_m <- phyla_samples_summary %>%
-    ungroup() %>%
     dplyr::select(ENA_RUN,relative_srs,Phylum) %>%
     pivot_wider(names_from=Phylum,
                 values_from=relative_srs,
@@ -285,24 +335,15 @@ ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
 ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
 
 
-#####
-phyla_dist_samples <- phyla_samples_summary %>% 
-    group_by(Phylum) %>%
-    summarise(n_samples=n(),
-              total_asvs=sum(asvs),
-              total_reads_srs=sum(reads_srs_sum),
-              average_relative=mean(relative_srs)) %>%
-    arrange(desc(average_relative)) %>% 
+## table for stats
+phyla_dist_samples_d <- phyla_dist_samples %>% 
     as.data.frame()
 
-rownames(phyla_dist_samples) <- phyla_dist_samples$Phylum
-phyla_dist_samples <- phyla_dist_samples[,-1]
+rownames(phyla_dist_samples_d) <- phyla_dist_samples_d$Phylum
+phyla_dist_samples_d <- phyla_dist_samples_d[,-1]
 
+plot(hclust(dist(phyla_dist_samples_d),"average" ))
 
-plot(hclust(dist(phyla_dist_samples)))
-
-phyla_barplot <- ggplot() +
-    geom_bar(position="stack", stat="identity")
 ## create bar plots for each sample at family level, class level, Phylum etc
 ## 
 
