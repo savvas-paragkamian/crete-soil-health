@@ -188,8 +188,10 @@ biodiversity_srs <- SRS(crete_biodiversity_matrix_df,
 rownames(biodiversity_srs) <- rownames(crete_biodiversity_matrix_df)
 
 # how many samples don't have ASVs
+print("how many samples don't have ASVs")
 length(which(colSums(biodiversity_srs)==0))
 # how many ASVs have 0 abundance after the SRS
+print("how many samples have 0 abundance after the SRS")
 length(which(rowSums(biodiversity_srs)==0))
 dim(biodiversity_srs)
 ## filter empty
@@ -207,6 +209,21 @@ crete_biodiversity <- crete_biodiversity_all %>%
     left_join(biodiversity_srs_l, by=c("asv_id"="rowname", "ENA_RUN"="colname"))
 
 write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
+
+print("how many occurrences don't have srs abundace")
+nrow(crete_biodiversity[is.na(crete_biodiversity$srs_abundance),])
+
+print("how many occurrences with srs abundace and Phylum")
+nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Phylum),])
+
+print("how many occurrences with srs abundace and Family")
+nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Family),])
+
+print("how many occurrences with srs abundace and Genus")
+nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Genus),])
+
+print("how many occurrences with srs abundace and Species")
+nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Species),])
 
 ########################## Samples diversity #########################
 ################################# Indices ###################################
@@ -312,6 +329,17 @@ print("sample with the highest microbial species diversity")
 crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
 ################################# Taxonomy #####################################
+
+## how the information of communities of Cretan soils is distributed across 
+## the taxonomic levels
+taxonomy_levels_occurrences <- crete_biodiversity %>%
+    group_by(classification) %>%
+    summarise(n_occurrences=n(),
+              reads=sum(abundance, na.rm=T),
+              reads_srs=sum(srs_abundance, na.rm=T),
+              asvs=length(unique(asv_id)))
+
+write_delim(taxonomy_levels_occurrences,"results/taxonomy_levels_occurrences.tsv",delim="\t")
 ## Phyla distribution, average relative abundance and ubiquity
 
 phyla_samples_summary <- crete_biodiversity %>%
@@ -325,3 +353,38 @@ phyla_samples_summary <- crete_biodiversity %>%
 #    na.omit(Phylum)
 
 write_delim(phyla_samples_summary,"results/phyla_samples_summary.tsv",delim="\t")
+
+## phyla stats
+total_samples <- length(unique(metadata$ENA_RUN))
+phyla_stats <- phyla_samples_summary %>% 
+    group_by(Phylum) %>%
+    summarise(n_samples=n(),
+              total_asvs=sum(asvs),
+              total_reads_srs=sum(reads_srs_sum),
+              proportion_sample=n_samples/total_samples,
+              average_relative=mean(relative_srs)) %>%
+    arrange(desc(average_relative))
+
+write_delim(phyla_stats,"results/phyla_stats.tsv",delim="\t")
+
+## Genera stats
+
+genera_phyla_stats <- crete_biodiversity %>%
+    filter(!is.na(srs_abundance), !is.na(Phylum),!is.na(Genus)) %>%
+    group_by(Phylum,Genus,ENA_RUN) %>%
+    summarise(asvs=n(),
+              reads_srs_mean=mean(srs_abundance),
+              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
+    group_by(Phylum,Genus) %>%
+    summarise(n_samples=n(),
+              average_relative=mean(relative_srs), 
+              total_asvs=sum(asvs),
+              total_reads_srs=sum(reads_srs_sum),
+              proportion_sample=n_samples/total_samples, .groups="keep") %>%
+    group_by(Phylum) %>%
+    mutate(n_genera=n()) %>%
+    arrange(desc(n_samples))
+
+write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
