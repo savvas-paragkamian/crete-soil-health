@@ -28,18 +28,24 @@ library(scales)
 ## biodiversity
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
-
+genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
+genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
 tax_tab <- readRDS("results/tax_tab.RDS")
 
 # Metadata
-
+samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
 ## spatial
 locations_spatial <- read_delim("spatial_data/ISD_sites_coordinates.tsv", delim="\t",col_names=T) %>%
     st_as_sf(coords=c("longitude", "latitude"),
              remove=F,
-             crs="WGS84")
+             crs="WGS84") %>%
+    left_join(metadata[,c("source_material_identifiers","ENA_RUN")],by=c("id"="source_material_identifiers")) %>%
+    left_join(samples_ucie_nmds_genera,by=c("ENA_RUN"="ENA_RUN"))
+
+locations_spatial$UCIE[is.na(locations_spatial$UCIE)] <- "gray" 
+
 crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
 crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
     st_as_sf(coords=c("X", "Y"),
@@ -66,7 +72,7 @@ crete_base <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
     geom_point(locations_spatial,
-            mapping=aes(x=longitude, y=latitude, color=route),
+            mapping=aes(x=longitude, y=latitude, color=UCIE, shape=route),
             size=1,
             alpha=0.8,
             show.legend=T) +
@@ -89,7 +95,7 @@ crete_base <- ggplot() +
                         colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
                         breaks = c(100, 800, 1500, 2400),
                         labels = c(100, 800, 1500, 2400))+
-    scale_color_manual(values=cols, guide=guide_legend(nrow=4))+
+    scale_color_manual(values=locations_spatial$UCIE, guide=guide_legend(nrow=4))+
     coord_sf(crs="wgs84") +
     theme_bw()+
     theme(axis.title=element_blank(),
@@ -268,7 +274,6 @@ ggsave("figures/representative_phyla_samples.png",
 
 ################################ Phyla and genera  #########################
 
-genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 
 phyla_genera_bar <- ggplot(genera_phyla_stats, mapping=aes(x=Phylum, y=average_relative,fill=Genus)) +
     geom_col(position="stack", stat="identity") +
@@ -309,17 +314,7 @@ rownames(phyla_samples_m) <- phyla_samples_m[,1]
 phyla_samples_m <- phyla_samples_m[,-1]
 
 
-#### genera
-genera_phyla_samples <- crete_biodiversity %>%
-    filter(!is.na(srs_abundance), !is.na(Phylum),!is.na(Genus)) %>%
-    group_by(Phylum,Genus,ENA_RUN) %>%
-    summarise(asvs=n(),
-              reads_srs_mean=mean(srs_abundance),
-              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
-    group_by(ENA_RUN) %>%
-    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
-    ungroup()
-
+#### genera as taxa in the community matrix
 genera_samples_m <- genera_phyla_samples %>%
     dplyr::select(ENA_RUN,relative_srs,Genus) %>%
     pivot_wider(names_from=Genus,
@@ -330,45 +325,152 @@ genera_samples_m <- genera_phyla_samples %>%
 rownames(genera_samples_m) <- genera_samples_m[,1]
 genera_samples_m <- genera_samples_m[,-1]
 
+genera_tax <- genera_phyla_samples %>% distinct(Phylum, Genus)
 community_matrix <- genera_samples_m
 
 bray <- vegdist(community_matrix,
                 method="bray")
-plot(hclust(bray))
 
-bray_phy <- vegdist(t(community_matrix),method="bray")
+png(file="figures/bray_hclust_samples.png",
+    width = 50,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+plot(hclust(bray))
+dev.off()
+
+bray_tax <- vegdist(t(community_matrix),method="bray")
+
+png(file="figures/bray_hclust_taxa.png",
+    width = 50,
+    height = 50,
+    res=300,
+    units = "cm",
+    bg="white")
 plot(hclust(bray_phy))
+dev.off()
+
+bray_samples <- vegdist(community_matrix,method="bray")
+#homoscedasticity_s <- betadisper(bray_samples, metadata$LABEL1, type = c("median","centroid"), bias.adjust = FALSE)
 
 bray_l <- dist_long(bray, "bray")
 
 z <- betadiver(community_matrix, "z")
-mod <- with(metadata, betadisper(z, LABEL1))
+#mod <- with(metadata, betadisper(z, LABEL1))
 #sac <- specaccum(biodiversity_srs_t)
 
-# Ordination
-nmds <- vegan::metaMDS(community_matrix,
+######################### Ordination ############################
+
+nmds_isd_ucie <- vegan::metaMDS(community_matrix,
+                       k=3,
+                       distance = "bray",
+                       trymax=100)
+
+nmds_sites_ucie <- as.data.frame(scores(nmds_isd_ucie,"sites"))
+library(ucie)
+
+data_with_colors <- data2cielab(nmds_sites_ucie, Wb=1.2, S=1.6)
+
+colnames(data_with_colors) <- c("ENA_RUN","UCIE")
+write_delim(data_with_colors,"results/samples_ucie_nmds_genera.tsv", delim="\t")
+
+####################### nMDS #########################
+nmds_isd <- vegan::metaMDS(community_matrix,
                        k=2,
                        distance = "bray",
                        trymax=100)
-metadata <- metadata %>%
-    filter(ENA_RUN %in% rownames(community_matrix))
 
-stressplot(nmds)
-ordiplot(nmds,display="sites", cex=1.25)
-ordisurf(nmds,metadata$dem,main="",col="forestgreen")
-ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
-ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
+nmds_species <- as.data.frame(scores(nmds_isd, "species"))
+nmds_species$scientificName <- rownames(nmds_species)
+
+nmds_sites <- as.data.frame(scores(nmds_isd,"sites")) %>%
+    rownames_to_column("ENA_RUN") %>%
+    left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
 
 
-## table for stats
-phyla_dist_samples_d <- phyla_dist_samples %>% 
-    as.data.frame()
+# fit environmental numerical vectors
+env_isd <- metadata %>%
+    filter(ENA_RUN %in% rownames(community_matrix)) %>% 
+    column_to_rownames(var="ENA_RUN")# %>%
 
-rownames(phyla_dist_samples_d) <- phyla_dist_samples_d$Phylum
-phyla_dist_samples_d <- phyla_dist_samples_d[,-1]
+envfit_isd <- envfit(nmds_isd, env_isd, permutations = 999, na.rm=T) 
+env_scores_isd <- as.data.frame(scores(envfit_isd, display = "vectors"))
 
-plot(hclust(dist(phyla_dist_samples_d),"average" ))
+### plots
 
+cats <- c("elevation_bin", "LABEL1", "LABEL2", "vegetation_zone")
+
+for (i in cats){
+
+    nmds_sites_plot <- ggplot() +
+        geom_point(data=nmds_sites, mapping=aes(x=NMDS1, y=NMDS2,color=nmds_sites[,i])) +
+        coord_fixed() +
+        theme_bw()
+    
+    ggsave(paste0("figures/nmds_sites_plot",i,".png"),
+           plot=nmds_sites_plot,
+           device="png",
+           height = 20,
+           width = 23,
+           units="cm")
+}
+
+png(file="figures/ordination_nmds_stressplot.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+stressplot(nmds_isd)
+dev.off()
+
+nmds_plot_genera <- ordiplot(nmds_isd,display="species", cex=1.25)
+nmds_plot_sites <- ordiplot(nmds_isd,display="sites", cex=1.25)
+
+png(file="figures/ordination_nmds_species_tax.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+plot(nmds_isd,type="n")
+points(nmds_isd, display = 'species', pch = '+', cex = 1)
+#ordisurf(nmds,genera_tax$Phylum,main="",col="orange")
+dev.off()
+
+png(file="figures/ordination_nmds_sites_lat.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+ordiplot(nmds_isd,display="sites", cex=1.25)
+ordisurf(nmds_isd,env_isd$latitude,main="",col="firebrick") ## interesting
+#ordisurf(nmds,metadata$dem,main="",col="orange")
+dev.off()
+
+png(file="figures/ordination_nmds_sites_dem.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+ordiplot(nmds_isd,display="sites", cex=1.25)
+ordisurf(nmds_isd,env_isd$dem,main="",col="firebrick") ## interesting
+dev.off()
+
+#ordisurf(nmds,metadata$dem,main="",col="orange")
+#ordisurf(nmds,metadata$longitude,main="",col="forestgreen")
+#ordisurf(nmds,metadata$latitude,main="",col="firebrick") ## interesting
+#ordisurf(nmds,metadata$total_organic_carbon,main="",col="blue")
+#ordisurf(nmds,metadata$total_nitrogen,main="",col="yellow")
+#ordisurf(nmds,metadata$shannon,main="",col="grey")
+#ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
+#ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
+
+
+dbrda_isd <- dbrda(community_matrix ~ elevation + latitude + longitude + total_organic_carbon + total_nitrogen + water_content,env_isd, dist="bray")
 ## create bar plots for each sample at family level, class level, Phylum etc
 ## 
 
@@ -562,21 +664,6 @@ diversity_boxplot <- function(dataset, x_axis, y_axis, grouping_var){
            units="cm")
 }
 
-# Numerical variables to plot against diversity indices
-vars <- c( "latitude",
-          "longitude",
-          "elevation",
-          "total_nitrogen",
-          "water_content",
-          "total_organic_carbon",
-          "sample_volume_or_weight_for_DNA_extraction",
-          "DNA_concentration",
-          "route")
-
-for (var in vars){
-    
-    gradient_scatterplot(metadata_diversity, var, "value", "diversity")
-}
 #################### Sample diversity gradients ######################
 ## similar to Structure and function of the global topsoil microbiome but
 ## without the statistic test.
@@ -617,6 +704,21 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
            height = 20,
            width = 23,
            units="cm")
+}
+# Numerical variables to plot against diversity indices
+vars <- c( "latitude",
+          "longitude",
+          "elevation",
+          "total_nitrogen",
+          "water_content",
+          "total_organic_carbon",
+          "sample_volume_or_weight_for_DNA_extraction",
+          "DNA_concentration",
+          "route")
+
+for (var in vars){
+    
+    gradient_scatterplot(metadata_diversity, var, "value", "diversity")
 }
 
 # Categorical variables to plot against diversity indices
