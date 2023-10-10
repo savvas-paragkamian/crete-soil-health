@@ -25,11 +25,14 @@ library(readr)
 library(magrittr)
 library(tidyr)
 library(ggplot2)
+library(ucie)
 
 ################################## Load data ##################################
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
 phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
+genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
+genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 #crete_biodiversity_matrix <- readRDS("results/crete_biodiversity_matrix.RDS")
 biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
 tax_tab <- readRDS("results/tax_tab.RDS")
@@ -118,7 +121,6 @@ jaccard <- vegdist(biodiversity_srs_t,
 aitchison <- vegdist(biodiversity_srs_t,
                 method="robust.aitchison")
 
-
 bray_l <- dist_long(bray, "bray")
 jaccard_l <- dist_long(jaccard, "jaccard")
 aitchison_l <- dist_long(aitchison, "robust.aitchison")
@@ -187,4 +189,16 @@ nmds <- vegan::metaMDS(t(crete_biodiversity_matrix),
 
 stressplot(nmds)
 ordiplot(nmds,display="sites", cex=1.25)
+####################### UCIE #########################
+# UCIE needs 3 axis of ordination
+nmds_isd_ucie <- vegan::metaMDS(community_matrix,
+                       k=3,
+                       distance = "bray",
+                       trymax=100)
 
+nmds_sites_ucie <- as.data.frame(scores(nmds_isd_ucie,"sites"))
+
+data_with_colors <- data2cielab(nmds_sites_ucie, Wb=1.2, S=1.6)
+
+colnames(data_with_colors) <- c("ENA_RUN","UCIE")
+write_delim(data_with_colors,"results/samples_ucie_nmds_genera.tsv", delim="\t")
