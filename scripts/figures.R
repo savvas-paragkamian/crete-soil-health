@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 ###############################################################################
 # script name: figures.R
 # developed by: Savvas Paragkamian
@@ -290,206 +290,7 @@ ggsave("figures/genera_phyla_stats.png",
        width = 23,
        units="cm")
 
-#################### testing ##############
-library(vegan)
-dist_long <- function(x,method){
-    method <- method
-    df <- as.data.frame(as.matrix(x)) %>%
-    rownames_to_column() %>%
-    pivot_longer(-rowname,
-                 values_to=method,
-                 names_to="colname")
 
-    return(df)
-}
-
-##### phyla
-phyla_samples_m <- phyla_samples_summary %>%
-    dplyr::select(ENA_RUN,relative_srs,Phylum) %>%
-    pivot_wider(names_from=Phylum,
-                values_from=relative_srs,
-                values_fill=0) %>%
-    as.data.frame()
-
-rownames(phyla_samples_m) <- phyla_samples_m[,1]
-phyla_samples_m <- phyla_samples_m[,-1]
-
-
-#### genera as taxa in the community matrix
-genera_samples_m <- genera_phyla_samples %>%
-    dplyr::select(ENA_RUN,relative_srs,Genus) %>%
-    pivot_wider(names_from=Genus,
-                values_from=relative_srs,
-                values_fill=0) %>%
-    as.data.frame()
-
-rownames(genera_samples_m) <- genera_samples_m[,1]
-genera_samples_m <- genera_samples_m[,-1]
-
-genera_tax <- genera_phyla_samples %>% distinct(Phylum, Genus)
-community_matrix <- genera_samples_m
-
-bray <- vegdist(community_matrix,
-                method="bray")
-
-png(file="figures/bray_hclust_samples.png",
-    width = 50,
-    height = 30,
-    res=300,
-    units = "cm",
-    bg="white")
-plot(hclust(bray))
-dev.off()
-
-bray_tax <- vegdist(t(community_matrix),method="bray")
-
-png(file="figures/bray_hclust_taxa.png",
-    width = 50,
-    height = 50,
-    res=300,
-    units = "cm",
-    bg="white")
-plot(hclust(bray_tax))
-dev.off()
-
-bray_samples <- vegdist(community_matrix,method="bray")
-#homoscedasticity_s <- betadisper(bray_samples, metadata$LABEL1, type = c("median","centroid"), bias.adjust = FALSE)
-
-bray_l <- dist_long(bray, "bray")
-
-z <- betadiver(community_matrix, "z")
-#mod <- with(metadata, betadisper(z, LABEL1))
-#sac <- specaccum(biodiversity_srs_t)
-
-######################### Ordination ############################
-
-####################### nMDS #########################
-nmds_isd <- vegan::metaMDS(community_matrix,
-                       k=2,
-                       distance = "bray",
-                       trymax=100)
-
-nmds_isd_taxa <- as.data.frame(scores(nmds_isd, "species")) %>%
-    rownames_to_column("scientificName") %>%
-    left_join(genera_tax, by=c("scientificName"="Genus"))
-
-write_delim(nmds_isd_taxa,"results/nmds_isd_taxa.tsv", delim="\t")
-
-nmds_isd_sites <- as.data.frame(scores(nmds_isd,"sites")) %>%
-    rownames_to_column("ENA_RUN") %>%
-    left_join(metadata[,c("ENA_RUN","elevation_bin", "LABEL1", "LABEL2", "vegetation_zone")],
-              by=c("ENA_RUN"="ENA_RUN"))
-
-write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
-# fit environmental numerical vectors
-env_isd <- metadata %>%
-    filter(ENA_RUN %in% rownames(community_matrix)) %>% 
-    column_to_rownames(var="ENA_RUN")# %>%
-
-envfit_isd <- envfit(nmds_isd, env_isd, permutations = 999, na.rm=T) 
-env_scores_isd <- as.data.frame(scores(envfit_isd, display = "vectors"))
-
-######### plots sites ###########
-
-nmds_isd_sites <- read_delim("results/nmds_isd_sites.tsv", delim="\t")
-nmds_sites_plot <- list()
-for (i in colnames(nmds_isd_sites)){
-
-    if (i=="ENA_RUN"){
-        next
-
-    }else{
-        nmds_sites_plot[[i]] <- ggplot() +
-            geom_point(data=nmds_isd_sites,
-                       mapping=aes(x=NMDS1, y=NMDS2,color=nmds_isd_sites[,i])) +
-            coord_fixed() +
-            theme_bw()
-    
-        ggsave(paste0("figures/ordination_nmds_sites_plot",i,".png"),
-            plot=nmds_sites_plot[[i]],
-            device="png",
-            height = 20,
-            width = 23,
-            units="cm")
-        Sys.sleep(2)
-    }
-}
-
-png(file="figures/ordination_nmds_stressplot.png",
-    width = 30,
-    height = 30,
-    res=300,
-    units = "cm",
-    bg="white")
-stressplot(nmds_isd)
-dev.off()
-
-nmds_plot_genera <- ordiplot(nmds_isd,display="species", cex=1.25)
-nmds_plot_sites <- ordiplot(nmds_isd,display="sites", cex=1.25)
-
-
-png(file="figures/ordination_nmds_sites_lat.png",
-    width = 30,
-    height = 30,
-    res=300,
-    units = "cm",
-    bg="white")
-ordiplot(nmds_isd,display="sites", cex=1.25)
-ordisurf(nmds_isd,env_isd$latitude,main="",col="firebrick") ## interesting
-#ordisurf(nmds,metadata$dem,main="",col="orange")
-dev.off()
-
-png(file="figures/ordination_nmds_sites_dem.png",
-    width = 30,
-    height = 30,
-    res=300,
-    units = "cm",
-    bg="white")
-ordiplot(nmds_isd,display="sites", cex=1.25)
-ordisurf(nmds_isd,env_isd$dem,main="",col="firebrick") ## interesting
-dev.off()
-
-######### plots genera ###########
-
-nmds_isd_taxa_ucie <- read_delim("results/nmds_isd_taxa_ucie.tsv", delim="\t")
-nmds_isd_taxa <- nmds_isd_taxa %>% left_join(nmds_isd_taxa_ucie)
-
-nmds_genera_plot <- ggplot() +
-    geom_point(data=nmds_isd_taxa,
-               mapping=aes(x=NMDS1, y=NMDS2,color=UCIE),show.legend = F) +
-    scale_color_manual(values=nmds_isd_taxa$UCIE)+
-    coord_equal() +
-    theme_bw()
-
-ggsave("figures/ordination_nmds_genera_plot.png",
-       plot=nmds_genera_plot,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-nmds_genera_plot_f <- nmds_genera_plot + facet_wrap(vars(Phylum),
-                                                    scales="fixed")
-
-ggsave("figures/ordination_nmds_genera_plot_f.png",
-       plot=nmds_genera_plot_f,
-       device="png",
-       height = 50,
-       width = 53,
-       units="cm")
-#ordisurf(nmds,metadata$dem,main="",col="orange")
-#ordisurf(nmds,metadata$longitude,main="",col="forestgreen")
-#ordisurf(nmds,metadata$latitude,main="",col="firebrick") ## interesting
-#ordisurf(nmds,metadata$total_organic_carbon,main="",col="blue")
-#ordisurf(nmds,metadata$total_nitrogen,main="",col="yellow")
-#ordisurf(nmds,metadata$shannon,main="",col="grey")
-#ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
-#ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
-
-
-dbrda_isd <- dbrda(community_matrix ~ elevation + latitude + longitude + total_organic_carbon + total_nitrogen + water_content,env_isd, dist="bray")
-## create bar plots for each sample at family level, class level, Phylum etc
-## 
 
 ########################### Generalists and specialists ##################
 ## Abundance (y axis) and occupancy (x axis) plot
@@ -590,8 +391,6 @@ ggsave("figures/fig_genera_generalists_facet.png",
        height = 50,
        width = 80,
        units="cm")
-
-
 
 
 ######################### ASVs distribution vs samples #####################
@@ -745,9 +544,70 @@ for (cat in cats){
     diversity_boxplot(metadata_diversity, cat, "value", "diversity")
 }
 
+######################### Ordination ############################
+######### plots sites ###########
+
+nmds_sites_plot <- function(df,col){
+    
+    nmds_sites_plot <- ggplot() +
+        geom_point(data=df,
+                   mapping=aes(x=.data[["NMDS1"]], y=.data[["NMDS2"]], color=.data[[col]])) +
+        coord_fixed() +
+        theme_bw()
+
+    ggsave(paste0("figures/ordination_nmds_sites_plot",col,".png"),
+        plot=nmds_sites_plot,
+        device="png",
+        height = 20,
+        width = 23,
+        units="cm")
+}
+
+nmds_isd_sites <- read_delim("results/nmds_isd_sites.tsv", delim="\t")
+
+for (i in colnames(nmds_isd_sites)){
+
+    if (i=="ENA_RUN"){
+        next
+
+    }else{
+        nmds_sites_plot(nmds_isd_sites, i)
+    }
+}
+
+######### plots genera ###########
+
+nmds_isd_taxa <- read_delim("results/nmds_isd_taxa.tsv", delim="\t")
+nmds_isd_taxa_ucie <- read_delim("results/nmds_isd_taxa_ucie.tsv", delim="\t")
+nmds_isd_taxa <- nmds_isd_taxa %>% left_join(nmds_isd_taxa_ucie)
+
+nmds_genera_plot <- ggplot() +
+    geom_point(data=nmds_isd_taxa,
+               mapping=aes(x=NMDS1, y=NMDS2,color=UCIE),show.legend = F) +
+    scale_color_manual(values=nmds_isd_taxa$UCIE)+
+    coord_equal() +
+    theme_bw()
+
+ggsave("figures/ordination_nmds_genera_plot.png",
+       plot=nmds_genera_plot,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+nmds_genera_plot_f <- nmds_genera_plot + facet_wrap(vars(Phylum),
+                                                    scales="fixed")
+
+ggsave("figures/ordination_nmds_genera_plot_f.png",
+       plot=nmds_genera_plot_f,
+       device="png",
+       height = 50,
+       width = 53,
+       units="cm")
+
 
 ######################## Community ################################
 
 
 
-
+print("all figures were generated")
