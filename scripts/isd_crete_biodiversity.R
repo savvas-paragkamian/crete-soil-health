@@ -376,7 +376,8 @@ genera_phyla_samples <- crete_biodiversity %>%
               reads_srs_mean=mean(srs_abundance),
               reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
     group_by(ENA_RUN) %>%
-    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) 
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
+    ungroup()
 
 write_delim(genera_phyla_samples,"results/genera_phyla_samples.tsv",delim="\t")
 
