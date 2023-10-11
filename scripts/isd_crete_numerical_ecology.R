@@ -61,6 +61,7 @@ dist_long <- function(x,method){
 
 
 ####################### Destriptors Statistics ###############################
+print("descriptors stats")
 pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
 pw_e <- pairwise.wilcox.test(metadata$S.obs, metadata$elevation_bin, p.adjust.method="BH")
 pw_s <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL1, p.adjust.method="BH")
@@ -87,6 +88,7 @@ write.table(cc_sp,
 
 ############################## Dissimilarity ###########################
 # use the vegan package, the matrix must be transposed
+print("(dis)similarities")
 biodiversity_srs_t <- t(biodiversity_srs)
 
 bray <- vegdist(biodiversity_srs_t,
@@ -155,6 +157,7 @@ phyla_dist_samples <- phyla_dist_samples[,-1]
 #ordiplot(nmds,display="sites", cex=1.25)
 
 ############### genera as taxa in the community matrix################
+print("genera as community")
 genera_samples_m <- genera_phyla_samples %>%
     dplyr::select(ENA_RUN,relative_srs,Genus) %>%
     pivot_wider(names_from=Genus,
@@ -162,13 +165,15 @@ genera_samples_m <- genera_phyla_samples %>%
                 values_fill=0) %>%
     as.data.frame()
 
-rownames(genera_samples_m) <- genera_samples_m[,1]
-genera_samples_m <- genera_samples_m[,-1]
+write_delim(genera_samples_m,"results/genera_samples_matrix.tsv", delim="\t")
+
+community_matrix <- genera_samples_m
+rownames(community_matrix) <- community_matrix[,1]
+community_matrix <- community_matrix[,-1]
 
 genera_tax <- genera_phyla_samples %>% distinct(Phylum, Genus)
 
 #### Community matrix with genera
-community_matrix <- genera_samples_m
 
 bray <- vegdist(community_matrix,
                 method="bray")
@@ -205,6 +210,7 @@ z <- betadiver(community_matrix, "z")
 ######################### Ordination ############################
 
 ####################### nMDS #########################
+print("starting nMDS")
 nmds_isd <- vegan::metaMDS(community_matrix,
                        k=2,
                        distance = "bray",
@@ -215,6 +221,7 @@ env_isd <- metadata %>%
     filter(ENA_RUN %in% rownames(community_matrix)) %>% 
     column_to_rownames(var="ENA_RUN")# %>%
 
+print("starting envfit")
 envfit_isd <- envfit(nmds_isd, env_isd, permutations = 999, na.rm=T) 
 env_scores_isd <- as.data.frame(scores(envfit_isd, display = "vectors"))
 write_delim(env_scores_isd,"results/env_scores_isd.tsv", delim="\t")
@@ -277,6 +284,7 @@ nmds_isd_k3 <- vegan::metaMDS(community_matrix,
                        k=3,
                        distance = "bray",
                        trymax=100)
+print("starting UCIE")
 # sites
 nmds_isd_sites_k3 <- as.data.frame(scores(nmds_isd_k3,"sites"))
 nmds_isd_sites_ucie <- ucie::data2cielab(nmds_isd_sites_k3, Wb=1.2, S=1.6)
@@ -290,6 +298,7 @@ write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
 
 ############################## Community analysis ###########################
 ###################### Co-occurrence of samples and ASVs ####################
+print("starting co-occurrence")
 
 #biodiversity_m <- biodiversity_srs
 #biodiversity_m[biodiversity_m > 0 ] <- 1
@@ -322,7 +331,14 @@ sample_cooccur[lower.tri(sample_cooccur)] <- NA
 
 sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
     filter(rowname!=colname) %>%
-    na.omit()
+    na.omit() %>% 
+    left_join(bray_l,
+              by=c("rowname"="rowname", "colname"="colname")) %>%
+    left_join(jaccard_l,
+              by=c("rowname"="rowname", "colname"="colname")) %>%
+    left_join(aitchison_l,
+              by=c("rowname"="rowname", "colname"="colname"))
+
 
 write_delim(sample_cooccur_l,"results/sample_cooccur_l.tsv", delim="\t")
 ######################## Site locations comparison ASV #################
@@ -334,12 +350,6 @@ samples_locations <- metadata %>%
 
 dissi_loc <- samples_locations %>%
     left_join(sample_cooccur_l,
-              by=c("loc_1"="rowname", "loc_2"="colname")) %>%
-    left_join(bray_l,
-              by=c("loc_1"="rowname", "loc_2"="colname")) %>%
-    left_join(jaccard_l,
-              by=c("loc_1"="rowname", "loc_2"="colname")) %>%
-    left_join(aitchison_l,
               by=c("loc_1"="rowname", "loc_2"="colname"))
 
 summary(dissi_loc)
