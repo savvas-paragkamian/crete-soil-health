@@ -17,7 +17,7 @@
 # usage:./isd_crete_numerical_ecology.R
 ###############################################################################
 #library(mia)
-library(phyloseq)
+#library(phyloseq)
 library(vegan)
 library(dplyr)
 library(tibble)
@@ -43,7 +43,6 @@ master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", se
 
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
-
 # differences of old and new data
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
@@ -62,13 +61,13 @@ dist_long <- function(x,method){
 
 
 ####################### Destriptors Statistics ###############################
-pw <- pairwise.wilcox.test(metadata$Observed, metadata_all$vegetation_zone, p.adjust.method="BH")
-pw_e <- pairwise.wilcox.test(metadata$Observed, metadata_all$elevation_bin, p.adjust.method="BH")
-pw_s <- pairwise.wilcox.test(metadata$Shannon, metadata_all$LABEL1, p.adjust.method="BH")
+pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
+pw_e <- pairwise.wilcox.test(metadata$S.obs, metadata$elevation_bin, p.adjust.method="BH")
+pw_s <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL1, p.adjust.method="BH")
 print(pw)
 
 # correlations of diversity and other numerical metadata
-with(metadata, cor(Shannon, water_content))
+with(metadata, cor(shannon, water_content))
 
 
 metadata_n <- metadata
@@ -84,27 +83,6 @@ write.table(cc_sp,
             sep="\t",
             row.names=T,
             col.names=NA)
-
-############################## Community analysis ###########################
-###################### Co-occurrence of samples and ASVs ####################
-
-biodiversity_m <- biodiversity_srs
-biodiversity_m[biodiversity_m > 0 ] <- 1
-biodiversity_m <- as.matrix(biodiversity_m)
-
-## matrix multiplication takes up a lot of memory and CPU, I had an error
-## Error: vector memory exhausted (limit reached?)
-## cd ~ ; touch .Renviron 
-## echo R_MAX_VSIZE=100Gb >> .Renviron
-
-asv_cooccur <- biodiversity_m %*% t(biodiversity_m)
-sample_cooccur <- t(biodiversity_m) %*% biodiversity_m
-isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
-sample_cooccur[lower.tri(sample_cooccur)] <- NA
-
-sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
-    filter(rowname!=colname) %>%
-    na.omit()
 
 
 ############################## Dissimilarity ###########################
@@ -141,8 +119,219 @@ phyla_dist_samples <- phyla_samples_summary %>%
 rownames(phyla_dist_samples) <- phyla_dist_samples$Phylum
 phyla_dist_samples <- phyla_dist_samples[,-1]
 
+#####################################################################
+#################### ASV community matrix ###################
+#z <- betadiver(biodiversity_srs_t, "z")
+#mod <- with(metadata, betadisper(z, LABEL1))
+#sac <- specaccum(biodiversity_srs_t)
 
-######################## Site locations comparison #################
+# Ordination
+#nmds <- vegan::metaMDS(biodiversity_srs_t,
+#                       k=2,
+#                       distance = "bray",
+#                       trymax=100)
+#stressplot(nmds)
+#ordiplot(nmds,display="sites", cex=1.25)
+#ordisurf(nmds,metadata$dem,main="",col="forestgreen")
+#ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
+#ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
+
+
+#tse <- runUMAP(tse,
+#               name = "UMAP",
+#               assay.type = "counts",
+#               ncomponents = 3)
+#plotReducedDim(tse, "UMAP",
+#               colour_by = "Group",
+#               ncomponents = c(1:3))
+#### tests 
+
+#nmds <- vegan::metaMDS(t(crete_biodiversity_matrix),
+#                       k=2,
+#                       distance = "bray",
+#                       trymax=100)
+
+#stressplot(nmds)
+#ordiplot(nmds,display="sites", cex=1.25)
+
+############### genera as taxa in the community matrix################
+genera_samples_m <- genera_phyla_samples %>%
+    dplyr::select(ENA_RUN,relative_srs,Genus) %>%
+    pivot_wider(names_from=Genus,
+                values_from=relative_srs,
+                values_fill=0) %>%
+    as.data.frame()
+
+rownames(genera_samples_m) <- genera_samples_m[,1]
+genera_samples_m <- genera_samples_m[,-1]
+
+genera_tax <- genera_phyla_samples %>% distinct(Phylum, Genus)
+
+#### Community matrix with genera
+community_matrix <- genera_samples_m
+
+bray <- vegdist(community_matrix,
+                method="bray")
+
+png(file="figures/bray_hclust_samples.png",
+    width = 50,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+plot(hclust(bray))
+dev.off()
+
+bray_tax <- vegdist(t(community_matrix),method="bray")
+
+png(file="figures/bray_hclust_taxa.png",
+    width = 50,
+    height = 50,
+    res=300,
+    units = "cm",
+    bg="white")
+plot(hclust(bray_tax))
+dev.off()
+
+bray_samples <- vegdist(community_matrix,method="bray")
+#homoscedasticity_s <- betadisper(bray_samples, metadata$LABEL1, type = c("median","centroid"), bias.adjust = FALSE)
+
+bray_l <- dist_long(bray, "bray")
+
+z <- betadiver(community_matrix, "z")
+#mod <- with(metadata, betadisper(z, LABEL1))
+#sac <- specaccum(biodiversity_srs_t)
+
+######################### Ordination ############################
+
+####################### nMDS #########################
+nmds_isd <- vegan::metaMDS(community_matrix,
+                       k=2,
+                       distance = "bray",
+                       trymax=100)
+
+# fit environmental numerical vectors
+env_isd <- metadata %>%
+    filter(ENA_RUN %in% rownames(community_matrix)) %>% 
+    column_to_rownames(var="ENA_RUN")# %>%
+
+envfit_isd <- envfit(nmds_isd, env_isd, permutations = 999, na.rm=T) 
+env_scores_isd <- as.data.frame(scores(envfit_isd, display = "vectors"))
+write_delim(env_scores_isd,"results/env_scores_isd.tsv", delim="\t")
+
+# plotting
+png(file="figures/ordination_nmds_stressplot.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+stressplot(nmds_isd)
+dev.off()
+
+png(file="figures/ordination_nmds_sites_lat.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+ordiplot(nmds_isd,display="sites", cex=1.25)
+ordisurf(nmds_isd,env_isd$latitude,main="",col="firebrick") ## interesting
+#ordisurf(nmds,metadata$dem,main="",col="orange")
+dev.off()
+
+png(file="figures/ordination_nmds_sites_dem.png",
+    width = 30,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
+ordiplot(nmds_isd,display="sites", cex=1.25)
+ordisurf(nmds_isd,env_isd$dem,main="",col="firebrick") ## interesting
+dev.off()
+
+
+nmds_isd_taxa <- as.data.frame(scores(nmds_isd, "species")) %>%
+    rownames_to_column("scientificName") %>%
+    left_join(genera_tax, by=c("scientificName"="Genus"))
+
+write_delim(nmds_isd_taxa,"results/nmds_isd_taxa.tsv", delim="\t")
+
+nmds_isd_sites <- as.data.frame(scores(nmds_isd,"sites")) %>%
+    rownames_to_column("ENA_RUN") %>%
+    left_join(metadata[,c("ENA_RUN","elevation_bin", "LABEL1", "LABEL2", "vegetation_zone")],
+              by=c("ENA_RUN"="ENA_RUN"))
+
+write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
+############################# dbRDA ############################
+
+#dbrda_isd <- dbrda(community_matrix ~ elevation + latitude + longitude + total_organic_carbon + total_nitrogen + water_content,env_isd, dist="bray")
+## create bar plots for each sample at family level, class level, Phylum etc
+## 
+
+############################# UMAP ############################
+
+####################### UCIE #########################
+# UCIE needs 3 axis of ordination
+nmds_isd_k3 <- vegan::metaMDS(community_matrix,
+                       k=3,
+                       distance = "bray",
+                       trymax=100)
+# sites
+nmds_isd_sites_k3 <- as.data.frame(scores(nmds_isd_k3,"sites"))
+nmds_isd_sites_ucie <- ucie::data2cielab(nmds_isd_sites_k3, Wb=1.2, S=1.6)
+colnames(nmds_isd_sites_ucie) <- c("ENA_RUN","UCIE")
+write_delim(nmds_isd_sites_ucie,"results/nmds_isd_sites_ucie.tsv", delim="\t")
+# taxa
+nmds_isd_taxa_k3 <- as.data.frame(scores(nmds_isd_k3,"species"))
+nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
+colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
+write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
+
+############################## Community analysis ###########################
+###################### Co-occurrence of samples and ASVs ####################
+
+#biodiversity_m <- biodiversity_srs
+#biodiversity_m[biodiversity_m > 0 ] <- 1
+#biodiversity_m <- as.matrix(biodiversity_m)
+
+## matrix multiplication takes up a lot of memory and CPU, I had an error
+## Error: vector memory exhausted (limit reached?)
+## cd ~ ; touch .Renviron 
+## echo R_MAX_VSIZE=200Gb >> .Renviron
+
+#asv_cooccur <- biodiversity_m %*% t(biodiversity_m)
+community_matrix_m <- community_matrix
+community_matrix_m[community_matrix_m > 0] <- 1
+community_matrix_m <- as.matrix(community_matrix_m)
+
+sample_cooccur <- community_matrix_m %*% t(community_matrix_m)
+taxa_cooccur <- t(community_matrix_m) %*% community_matrix_m
+
+isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
+taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
+
+taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
+    filter(rowname!=colname) %>%
+    na.omit()
+
+write_delim(taxa_cooccur_l,"results/taxa_cooccur_l.tsv", delim="\t")
+
+isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
+sample_cooccur[lower.tri(sample_cooccur)] <- NA
+
+sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
+    filter(rowname!=colname) %>%
+    na.omit()
+
+write_delim(sample_cooccur_l,"results/sample_cooccur_l.tsv", delim="\t")
+######################## Site locations comparison ASV #################
+samples_locations <- metadata %>%
+    pivot_wider(id_cols=sites,
+                names_from=location,
+                values_from=ENA_RUN)
+
+
 dissi_loc <- samples_locations %>%
     left_join(sample_cooccur_l,
               by=c("loc_1"="rowname", "loc_2"="colname")) %>%
@@ -153,52 +342,4 @@ dissi_loc <- samples_locations %>%
     left_join(aitchison_l,
               by=c("loc_1"="rowname", "loc_2"="colname"))
 
-
 summary(dissi_loc)
-
-#####################################################################
-z <- betadiver(biodiversity_srs_t, "z")
-mod <- with(metadata_all, betadisper(z, LABEL1))
-#sac <- specaccum(biodiversity_srs_t)
-
-# Ordination
-nmds <- vegan::metaMDS(biodiversity_srs_t,
-                       k=2,
-                       distance = "bray",
-                       trymax=100)
-stressplot(nmds)
-ordiplot(nmds,display="sites", cex=1.25)
-ordisurf(nmds,metadata_all$dem,main="",col="forestgreen")
-ordihull(nmds,display="sites",label=T,  groups=metadata_all$LABEL1, cex=1.25)
-ordihull(nmds,display="sites",label=T,  groups=metadata_all$elevation, cex=1.25)
-
-
-tse <- runUMAP(tse,
-               name = "UMAP",
-               assay.type = "counts",
-               ncomponents = 3)
-plotReducedDim(tse, "UMAP",
-               colour_by = "Group",
-               ncomponents = c(1:3))
-#### tests 
-
-nmds <- vegan::metaMDS(t(crete_biodiversity_matrix),
-                       k=2,
-                       distance = "bray",
-                       trymax=100)
-
-stressplot(nmds)
-ordiplot(nmds,display="sites", cex=1.25)
-####################### UCIE #########################
-# UCIE needs 3 axis of ordination
-nmds_isd_ucie <- vegan::metaMDS(community_matrix,
-                       k=3,
-                       distance = "bray",
-                       trymax=100)
-
-nmds_sites_ucie <- as.data.frame(scores(nmds_isd_ucie,"sites"))
-
-data_with_colors <- data2cielab(nmds_sites_ucie, Wb=1.2, S=1.6)
-
-colnames(data_with_colors) <- c("ENA_RUN","UCIE")
-write_delim(data_with_colors,"results/samples_ucie_nmds_genera.tsv", delim="\t")
