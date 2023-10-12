@@ -23,6 +23,7 @@ library(sf)
 library(jpeg)
 library(raster)
 library(scales)
+library(ucie)
 
 ################################## Load data ##################################
 ## biodiversity
@@ -61,6 +62,27 @@ natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
 dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
+
+####################### UCIE #########################
+# UCIE needs 3 axis of ordination
+#nmds_isd_k3 <- vegan::metaMDS(community_matrix,
+#                       k=3,
+#                       distance = "bray",
+#                       trymax=100)
+print("starting UCIE")
+# sites
+
+umap_isd_sites_k3 <- read_delim("results/umap_samples_3.tsv", delim="\t")
+umap_isd_genera_k3 <- read_delim("results/umap_genera_3.tsv", delim="\t")
+#nmds_isd_sites_k3 <- as.data.frame(scores(nmds_isd_k3,"sites"))
+umap_isd_sites_ucie <- ucie::data2cielab(umap_isd_sites_k3, Wb=1.2, S=1.6)
+colnames(nmds_isd_sites_ucie) <- c("ENA_RUN","UCIE")
+write_delim(nmds_isd_sites_ucie,"results/nmds_isd_sites_ucie.tsv", delim="\t")
+# taxa
+nmds_isd_taxa_k3 <- as.data.frame(scores(nmds_isd_k3,"species"))
+nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
+colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
+write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
 
 ##################################### MAPS #####################################
 # Colorblind palette

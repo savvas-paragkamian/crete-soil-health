@@ -25,7 +25,6 @@ library(readr)
 library(magrittr)
 library(tidyr)
 library(ggplot2)
-library(ucie)
 
 ################################## Load data ##################################
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
@@ -277,24 +276,8 @@ write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
 ## 
 
 ############################# UMAP ############################
-
-####################### UCIE #########################
-# UCIE needs 3 axis of ordination
-nmds_isd_k3 <- vegan::metaMDS(community_matrix,
-                       k=3,
-                       distance = "bray",
-                       trymax=100)
-print("starting UCIE")
-# sites
-nmds_isd_sites_k3 <- as.data.frame(scores(nmds_isd_k3,"sites"))
-nmds_isd_sites_ucie <- ucie::data2cielab(nmds_isd_sites_k3, Wb=1.2, S=1.6)
-colnames(nmds_isd_sites_ucie) <- c("ENA_RUN","UCIE")
-write_delim(nmds_isd_sites_ucie,"results/nmds_isd_sites_ucie.tsv", delim="\t")
-# taxa
-nmds_isd_taxa_k3 <- as.data.frame(scores(nmds_isd_k3,"species"))
-nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
-colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
-write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
+# the python script isd_crete_umap.py
+# performs the UMAP algorithm
 
 ############################## Community analysis ###########################
 ###################### Co-occurrence of samples and ASVs ####################
