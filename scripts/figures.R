@@ -547,16 +547,23 @@ for (cat in cats){
 ######################### Ordination ############################
 ######### plots sites ###########
 
-nmds_sites_plot <- function(df,col){
+ordination_sites_plot <- function(df,col,x_axis,y_axis,method){
     
-    nmds_sites_plot <- ggplot() +
+    shapes <- length(unique(df[[col]]))
+    print(shapes)
+    sites_plot <- ggplot() +
         geom_point(data=df,
-                   mapping=aes(x=.data[["NMDS1"]], y=.data[["NMDS2"]], color=.data[[col]])) +
+                   mapping=aes(x=.data[[x_axis]],
+                               y=.data[[y_axis]],
+                               color=.data[["UCIE"]],
+                               shape=.data[[col]])) +
+        scale_color_manual(values=df$UCIE, guide = "none")+
+        scale_shape_manual(values=c(seq(0,shapes,1)))+
         coord_fixed() +
         theme_bw()
 
-    ggsave(paste0("figures/ordination_nmds_sites_plot",col,".png"),
-        plot=nmds_sites_plot,
+    ggsave(paste0("figures/ordination_",method,"_sites_plot_",col,".png"),
+        plot=sites_plot,
         device="png",
         height = 20,
         width = 23,
@@ -564,14 +571,21 @@ nmds_sites_plot <- function(df,col){
 }
 
 nmds_isd_sites <- read_delim("results/nmds_isd_sites.tsv", delim="\t")
+umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
 
-for (i in colnames(nmds_isd_sites)){
+ordination_sites <- nmds_isd_sites %>%
+    left_join(umap_isd_sites, by=c("ENA_RUN"="id")) %>%
+    left_join(samples_ucie_nmds_genera)
 
-    if (i=="ENA_RUN"){
-        next
+for (i in cats){
+
+    if (is.character(ordination_sites[[i]]) & i!="ENA_RUN"){
+        print(i)
+        ordination_sites_plot(ordination_sites, i,"NMDS1","NMDS2", "nmds")
+        ordination_sites_plot(ordination_sites, i,"UMAP1","UMAP2", "umap")
 
     }else{
-        nmds_sites_plot(nmds_isd_sites, i)
+        next
     }
 }
 
@@ -579,7 +593,8 @@ for (i in colnames(nmds_isd_sites)){
 
 nmds_isd_taxa <- read_delim("results/nmds_isd_taxa.tsv", delim="\t")
 nmds_isd_taxa_ucie <- read_delim("results/nmds_isd_taxa_ucie.tsv", delim="\t")
-nmds_isd_taxa <- nmds_isd_taxa %>% left_join(nmds_isd_taxa_ucie)
+umap_isd_genera <- read_delim("results/umap_genera_2.tsv", delim="\t")
+nmds_isd_taxa <- nmds_isd_taxa %>% left_join(nmds_isd_taxa_ucie) %>% left_join(umap_isd_genera, by=c("scientificName"="id"))
 
 nmds_genera_plot <- ggplot() +
     geom_point(data=nmds_isd_taxa,
@@ -600,6 +615,30 @@ nmds_genera_plot_f <- nmds_genera_plot + facet_wrap(vars(Phylum),
 
 ggsave("figures/ordination_nmds_genera_plot_f.png",
        plot=nmds_genera_plot_f,
+       device="png",
+       height = 50,
+       width = 53,
+       units="cm")
+#### umap
+umap_genera_plot <- ggplot() +
+    geom_point(data=nmds_isd_taxa,
+               mapping=aes(x=UMAP1, y=UMAP2,color=UCIE),show.legend = F) +
+    scale_color_manual(values=nmds_isd_taxa$UCIE)+
+    coord_equal() +
+    theme_bw()
+
+ggsave("figures/ordination_umap_genera_plot.png",
+       plot=umap_genera_plot,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+umap_genera_plot_f <- umap_genera_plot + facet_wrap(vars(Phylum),
+                                                    scales="fixed")
+
+ggsave("figures/ordination_umap_genera_plot_f.png",
+       plot=umap_genera_plot_f,
        device="png",
        height = 50,
        width = 53,
