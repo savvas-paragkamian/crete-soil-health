@@ -291,8 +291,6 @@ write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
 ############################# dbRDA ############################
 
 #dbrda_isd <- dbrda(community_matrix ~ elevation + latitude + longitude + total_organic_carbon + total_nitrogen + water_content,env_isd, dist="bray")
-## create bar plots for each sample at family level, class level, Phylum etc
-## 
 
 ############################# UMAP ############################
 # the python script isd_crete_umap.py
