@@ -76,6 +76,56 @@ dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
+## world clim data enrichment
+library(rSDM)
+raster_map <- function(raster_tmp,world_clim_variable,metadata_spatial, crete_shp){
+    raster_pixel <- as(raster_tmp, "SpatialPixelsDataFrame")
+    raster_df <- as.data.frame(raster_pixel)
+
+    fill_v <- colnames(raster_df)
+
+    g_base <- ggplot() +
+        geom_sf(crete_shp, mapping=aes()) +
+        coord_sf(crs="WGS84") +
+        theme_bw()
+    
+    g_dem <- g_base +
+        geom_raster(raster_df, mapping=aes(x=x, y=y, fill=.data[[fill_v[1]]]))+
+        geom_sf(metadata_spatial, mapping=aes(),color="firebrick", size=0.1, alpha=0.7)
+    
+    ggsave(paste0("figures/map_",world_clim_variable,"_crete.png",sep=""),
+           plot=g_dem, 
+           height = 20, 
+           width = 30,
+           dpi = 300, 
+           units="cm",
+           device="png")
+}
+
+world_clim_dir <- "spatial_data/world_clim_crete/"
+world_clim_files <- list.files(world_clim_dir)
+
+metadata_world_clim <- metadata_spatial %>% dplyr::select(ENA_RUN)
+for (f in world_clim_files){
+    
+#    f <- world_clim_files[1]
+    raster_path <- paste0(world_clim_dir,f,sep="")
+    raster_tmp <- raster(raster_path)
+    world_clim_variable <- gsub(".*(bio_\\d{1,2}).*","\\1", f)
+    raster_map(raster_tmp, world_clim_variable,metadata_spatial, crete_shp)
+    print(world_clim_variable)
+    locations_s <- locs2sp(do.call(rbind, st_geometry(metadata_world_clim)))
+    check.coords <- points2nearestcell(locations_s, raster_tmp)
+    df_corrected_coords <- as.data.frame(check.coords)
+    sf_world_clim <- cbind(st_drop_geometry(metadata_world_clim),df_corrected_coords) %>% 
+        st_as_sf(coords=c("longitude", "latitude"),
+                 remove=T,
+                 crs="WGS84")
+    metadata_world_clim[,world_clim_variable] <- raster::extract(raster_tmp, sf_world_clim, cellnumbers=F)  
+}
+
+metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_world_clim))
+
 # Enrichment
 
 metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
