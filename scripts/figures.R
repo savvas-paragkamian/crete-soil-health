@@ -42,10 +42,8 @@ locations_spatial <- read_delim("spatial_data/ISD_sites_coordinates.tsv", delim=
     st_as_sf(coords=c("longitude", "latitude"),
              remove=F,
              crs="WGS84") %>%
-    left_join(metadata[,c("source_material_identifiers","ENA_RUN")],by=c("id"="source_material_identifiers")) %>%
-    left_join(samples_ucie_nmds_genera,by=c("ENA_RUN"="ENA_RUN"))
+    left_join(metadata[,c("source_material_identifiers","ENA_RUN")],by=c("id"="source_material_identifiers"))
 
-locations_spatial$UCIE[is.na(locations_spatial$UCIE)] <- "gray" 
 
 crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
 crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
@@ -65,25 +63,42 @@ dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
 ####################### UCIE #########################
 # UCIE needs 3 axis of ordination
-#nmds_isd_k3 <- vegan::metaMDS(community_matrix,
-#                       k=3,
-#                       distance = "bray",
-#                       trymax=100)
 print("starting UCIE")
+
+############################### ucie with umap ########################
 # sites
+#umap_isd_sites_k3 <- read_delim("results/umap_samples_3.tsv", delim="\t") %>% column_to_rownames("id")
 
-umap_isd_sites_k3 <- read_delim("results/umap_samples_3.tsv", delim="\t")
-umap_isd_genera_k3 <- read_delim("results/umap_genera_3.tsv", delim="\t")
-#nmds_isd_sites_k3 <- as.data.frame(scores(nmds_isd_k3,"sites"))
-umap_isd_sites_ucie <- ucie::data2cielab(umap_isd_sites_k3, Wb=1.2, S=1.6)
-colnames(nmds_isd_sites_ucie) <- c("ENA_RUN","UCIE")
-write_delim(nmds_isd_sites_ucie,"results/nmds_isd_sites_ucie.tsv", delim="\t")
+#umap_isd_genera_k3 <- read_delim("results/umap_genera_3.tsv", delim="\t") %>% column_to_rownames("id")
+
+#umap_isd_sites_ucie <- ucie::data2cielab(umap_isd_sites_k3, LAB_coordinates = F)
+#colnames(umap_isd_sites_ucie) <- c("ENA_RUN","UCIE")
+#write_delim(umap_isd_sites_ucie,"results/umap_isd_sites_ucie.tsv", delim="\t")
 # taxa
-nmds_isd_taxa_k3 <- as.data.frame(scores(nmds_isd_k3,"species"))
-nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
-colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
-write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
+#umap_isd_taxa_ucie <- ucie::data2cielab(umap_isd_genera_k3)
+#colnames(umap_isd_taxa_ucie) <- c("scientificName","UCIE")
+#write_delim(umap_isd_taxa_ucie,"results/umap_isd_taxa_ucie.tsv", delim="\t")
 
+############################### ucie with pcoa ########################
+
+pcoa_isd_sites <- read_delim("results/ordination_pcoa_bray_sites.tsv", delim="\t") %>%
+    column_to_rownames("ENA_RUN") %>% dplyr::select(Axis.1, Axis.2, Axis.3)
+
+pcoa_isd_sites_ucie <- ucie::data2cielab(pcoa_isd_sites, LAB_coordinates = F)
+colnames(pcoa_isd_sites_ucie) <- c("ENA_RUN","UCIE")
+write_delim(pcoa_isd_sites_ucie,"results/pcoa_isd_sites_ucie.tsv", delim="\t")
+
+############################### ucie with pcoa ########################
+#nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
+#colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
+#write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
+
+
+############################# ucie to location data ####################
+locations_spatial <- locations_spatial %>%
+    left_join(pcoa_isd_sites_ucie,by=c("ENA_RUN"="ENA_RUN"))
+
+locations_spatial$UCIE[is.na(locations_spatial$UCIE)] <- "gray" 
 ##################################### MAPS #####################################
 # Colorblind palette
 palette.colors(palette = "Okabe-Ito")
@@ -594,10 +609,15 @@ ordination_sites_plot <- function(df,col,x_axis,y_axis,method){
 
 nmds_isd_sites <- read_delim("results/nmds_isd_sites.tsv", delim="\t")
 umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
+pcoa_isd_sites <- read_delim("results/ordination_pcoa_bray_sites.tsv", delim="\t")
+#umap_isd_sites_k1 <- read_delim("results/umap_samples_1.tsv", delim="\t")
+#colnames(umap_isd_sites_k1) <- c("id", "UCIE")
 
 ordination_sites <- nmds_isd_sites %>%
     left_join(umap_isd_sites, by=c("ENA_RUN"="id")) %>%
-    left_join(samples_ucie_nmds_genera)
+    left_join(pcoa_isd_sites_ucie) %>%
+    left_join(pcoa_isd_sites)
+#    left_join(umap_isd_sites_k1 ,by=c("ENA_RUN"="id"))
 
 for (i in cats){
 
@@ -605,11 +625,16 @@ for (i in cats){
         print(i)
         ordination_sites_plot(ordination_sites, i,"NMDS1","NMDS2", "nmds")
         ordination_sites_plot(ordination_sites, i,"UMAP1","UMAP2", "umap")
+        ordination_sites_plot(ordination_sites, i,"Axis.1","Axis.2", "pcoa")
 
     }else{
         next
     }
 }
+### 3d for inspection of the dimention reduction
+# 
+#library(plotly)
+#plot_ly(x=umap_isd_sites_k3$UMAP1, y=umap_isd_sites_k3$UMAP2, z=umap_isd_sites_k3$UMAP3, type="scatter3d", mode="markers")
 
 ######### plots genera ###########
 
