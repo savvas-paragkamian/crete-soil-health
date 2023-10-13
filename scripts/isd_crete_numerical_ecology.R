@@ -19,6 +19,7 @@
 #library(mia)
 #library(phyloseq)
 library(vegan)
+library(ape)
 library(dplyr)
 library(tibble)
 library(readr)
@@ -207,6 +208,15 @@ z <- betadiver(community_matrix, "z")
 #sac <- specaccum(biodiversity_srs_t)
 
 ######################### Ordination ############################
+####################### PCoA #########################
+print("starting PCoA")
+
+#### sites
+pcoa_bray <- ape::pcoa(bray)
+pcoa_bray_m <- pcoa_bray$vectors %>% as.data.frame() %>% rownames_to_column("ENA_RUN")
+
+write_delim(pcoa_bray_m,"results/ordination_pcoa_bray_sites.tsv", delim="\t")
+
 
 ####################### nMDS #########################
 print("starting nMDS")
@@ -269,6 +279,15 @@ nmds_isd_sites <- as.data.frame(scores(nmds_isd,"sites")) %>%
               by=c("ENA_RUN"="ENA_RUN"))
 
 write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
+
+############################ nmds k3 ###########################
+
+#nmds_isd_k3 <- vegan::metaMDS(community_matrix,
+#                       k=3,
+#                       distance = "bray",
+#                       trymax=100)
+#nmds_isd_taxa_k3 <- as.data.frame(scores(nmds_isd_k3,"species"))
+#nmds_isd_sites_k3 <- as.data.frame(scores(nmds_isd_k3,"sites"))
 ############################# dbRDA ############################
 
 #dbrda_isd <- dbrda(community_matrix ~ elevation + latitude + longitude + total_organic_carbon + total_nitrogen + water_content,env_isd, dist="bray")
