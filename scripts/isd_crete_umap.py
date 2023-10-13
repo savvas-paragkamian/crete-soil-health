@@ -37,8 +37,8 @@ def umap_function(array, df_ids, n_components,axis):
     
     np.random.seed(123)
     # umap function
-    embedding = umap.UMAP(n_neighbors=80,
-                          min_dist=0.3,
+    embedding = umap.UMAP(n_neighbors=30,
+                          min_dist=0.7,
                           n_components=n_components,
                           metric='braycurtis').fit_transform(array)
     
@@ -62,9 +62,11 @@ def umap_function(array, df_ids, n_components,axis):
 print("UMAP samples is ongoing")
 umap_function(community_array,df_samples, 3, "samples")
 umap_function(community_array,df_samples, 2, "samples")
+umap_function(community_array,df_samples, 1, "samples")
 
 # taxa
 print("UMAP taxa is ongoing")
 umap_function(community_array_t,df_taxa,3,"genera")
 umap_function(community_array_t,df_taxa,2,"genera")
+umap_function(community_array_t,df_taxa,1,"genera")
 
