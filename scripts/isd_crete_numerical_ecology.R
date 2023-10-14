@@ -59,7 +59,9 @@ dist_long <- function(x,method){
     return(df)
 }
 
-
+######
+###
+metadata <- metadata %>% filter(ENA_RUN %in% colnames(biodiversity_srs))
 ####################### Destriptors Statistics ###############################
 print("descriptors stats")
 pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
