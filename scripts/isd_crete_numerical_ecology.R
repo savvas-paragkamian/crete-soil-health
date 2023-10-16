@@ -180,7 +180,7 @@ genera_tax <- genera_phyla_samples %>% distinct(Phylum, Genus)
 bray <- vegdist(community_matrix,
                 method="bray")
 
-png(file="figures/bray_hclust_samples.png",
+png(file="figures/clustering_bray_hclust_samples.png",
     width = 50,
     height = 30,
     res=300,
@@ -191,7 +191,7 @@ dev.off()
 
 bray_tax <- vegdist(t(community_matrix),method="bray")
 
-png(file="figures/bray_hclust_taxa.png",
+png(file="figures/clustering_hclust_taxa.png",
     width = 50,
     height = 50,
     res=300,
@@ -355,3 +355,4 @@ dissi_loc <- samples_locations %>%
               by=c("loc_1"="rowname", "loc_2"="colname"))
 
 summary(dissi_loc)
+print("finish")
