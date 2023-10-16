@@ -41,7 +41,7 @@ library(SRS) # normalisation
 #library(ANCOMBC)
 ################################## functions ##################################
 # this function keeps the last occurrence of a string separated by |
-keep_last <- function(x) tail(strsplit(x, split="\\|")[[1]],1)
+keep_last <- function(x) tail(strsplit(x, split="; ")[[1]],1)
 
 dist_long <- function(x,method){
     method <- method
