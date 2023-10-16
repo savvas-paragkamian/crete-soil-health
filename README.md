@@ -173,7 +173,7 @@ CORINE Land Cover data are used to identify human pressures on the Natura2000
 regions and on the hotspots of the arthropod endemic taxa.
 
 The protected areas of [Natura2000 SCI](https://www.eea.europa.eu/data-and-maps/data/natura-14)
-(habitats directive) and [Wildlife refugees](https://www.protectedplanet.net/en/thematic-areas/wdpa?tab=WDPA)
+(habitats directive) and [Wildlife Refuges](https://www.protectedplanet.net/en/thematic-areas/wdpa?tab=WDPA)
 are used in this analysis. 
 
 ## Analysis
