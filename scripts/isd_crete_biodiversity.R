@@ -59,9 +59,10 @@ dist_long <- function(x,method){
 #master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
 
 # Load data
-abundance_asv_long <- read_delim("dada2_output/taxonomy/seqtab_nochim_long.tsv", delim="\t") %>% 
-    mutate(ENA_RUN=gsub("_1_filt.fastq.gz", "", file, perl=T))
-#abundance_asv <- readRDS("dada2_output/taxonomy/seqtab_nochim.RDS") # use this one if data are RDS
+print("loading data")
+#abundance_asv_long <- read_delim("dada2_output/taxonomy/seqtab_nochim_long.tsv", delim="\t") %>% 
+#    mutate(ENA_RUN=gsub("_1_filt.fastq.gz", "", file, perl=T))
+abundance_asv <- readRDS("dada2_output/taxonomy/seqtab_nochim.RDS") # use this one if data are RDS
 asv_fasta <- read_delim("dada2_output/taxonomy/asv_fasta_ids.tsv", delim="\t")
 taxa_asv <- readRDS("dada2_output/taxonomy/dada2_taxonomy.RDS")
 species_asv <- readRDS("dada2_output/taxonomy/dada2_taxa_species.RDS")
@@ -73,6 +74,7 @@ metadata$location <- gsub(".*(loc_.*)","\\1", metadata$source_material_identifie
 
 ########################## transform the matrices to long tables ##########################
 
+print("transforming data")
 ## this is for the species exact matching results from DADA2 addSpecies function
 species <- data.frame(genus = species_asv[,6], species = species_asv[,8]) %>% 
     rownames_to_column("asv") %>%
@@ -83,10 +85,11 @@ species <- data.frame(genus = species_asv[,6], species = species_asv[,8]) %>%
 ## the abundance matrix has all the biodiverstity information
 ## sampleID, ASV and abundance. NOTE that contains many zeros!!!
 ## UNCOMMENT if data are from RDS!
-#abundance_asv_l <- abundance_asv %>% 
-#    data.frame() %>%
-#    rownames_to_column("sampleID") %>%
-#    pivot_longer(!sampleID, names_to = "asv", values_to = "abundance")
+abundance_asv_long <- abundance_asv %>% 
+    data.frame() %>%
+    rownames_to_column("file") %>%
+    pivot_longer(!file, names_to = "asv", values_to = "abundance") %>%
+    mutate(ENA_RUN=gsub("_1_filt.fastq.gz", "", file, perl=T))
 
 ## the taxonomy matrix has all the taxonomic information of each ASV
 taxa_asv_l <- taxa_asv %>% 
@@ -106,13 +109,13 @@ taxa_asv_l <- taxa_asv %>%
 taxa_asv_s <- taxa_asv_l %>%
     group_by(asv) %>%
     summarise(higherClassification = paste0(higherClassification,
-                                            collapse = "|"), 
-              scientificName_all = paste0(scientificName,
-                                       collapse = "|")) %>%
+                                            collapse = "; "), 
+              taxonomy = paste0(scientificName,
+                                       collapse = "; ")) %>%
     ungroup()
 
 # keep the lowest taxonomic inforfation per ASV
-taxa_asv_s$scientificName <- sapply(taxa_asv_s$scientificName_all,
+taxa_asv_s$scientificName <- sapply(taxa_asv_s$taxonomy,
                                            keep_last,
                                            simplify = T, USE.NAMES=F)
 
@@ -128,7 +131,7 @@ taxa_asv_all <- taxa_asv_l %>%
 ####################### merge abundance and taxonomy ##########################
 
 crete_biodiversity_all <- abundance_asv_long %>%
-    left_join(taxa_asv_all,by=c("asv_id"="asv_id")) %>%
+    left_join(taxa_asv_all,by=c("asv"="asv")) %>%
     filter(abundance>0)
 
 ######################## Decontamination #####################################
@@ -147,7 +150,7 @@ print(paste0("ASVs without taxonomy: ", nrow(asv_no_taxonomy)))
 ## create a abundance matrix
 crete_biodiversity_m <- crete_biodiversity_all %>%
     filter(!is.na(classification)) %>%
-    select(ENA_RUN, asv_id, abundance) %>%
+    dplyr::select(ENA_RUN, asv_id, abundance) %>%
     pivot_wider(names_from=ENA_RUN, values_from=abundance, values_fill = 0) %>%
     as.matrix()
 
@@ -155,8 +158,12 @@ crete_biodiversity_matrix <- crete_biodiversity_m[,-1]
 crete_biodiversity_matrix <- apply(crete_biodiversity_matrix, 2, as.numeric)
 rownames(crete_biodiversity_matrix) <- crete_biodiversity_m[,1]
 saveRDS(crete_biodiversity_matrix, "results/crete_biodiversity_matrix.RDS")
+print("master file created")
+
+
 
 # SRS compositional preparation
+print("compositionanlity with SRS method")
 
 Cmin <- min(colSums(crete_biodiversity_matrix))
 Cmax <- max(colSums(crete_biodiversity_matrix))
@@ -199,6 +206,17 @@ biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
 
 #### Save ######
 saveRDS(biodiversity_srs, "results/biodiversity_srs.RDS")
+#biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
+
+### save Faprotax format
+biodiversity_srs_faprotax <- biodiversity_srs %>%
+    rownames_to_column("asv_id") %>% 
+    left_join(taxa_asv_all[,c("asv_id","taxonomy")], by=c("asv_id"="asv_id")) %>%
+    as_tibble()
+
+write_delim(biodiversity_srs_faprotax,
+            "results/biodiversity_srs_faprotax.tsv",
+            delim="\t")
 
 ### remove the asvs that don't have a taxonomy
 ############################# Merge SRS ################################
@@ -225,8 +243,18 @@ nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_
 print("how many occurrences with srs abundace and Species")
 nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Species),])
 
+######################## clean environment ######################## 
+
+#variables_keep <- c(biodiversity_srs_l,
+#                    biodiversity_srs,
+#                    crete_biodiversity,
+#                    metadata)
+
+#rm(list=setdiff(ls(), variables_keep))
+
 ########################## Samples diversity #########################
 ################################# Indices ###################################
+print("sample summary")
 # total ASV per sample
 samples_srs_asvs <- biodiversity_srs_l %>%
     group_by(colname) %>%
@@ -283,6 +311,7 @@ write_delim(metadata_all,
             delim="\t")
 
 ########################## ASV summary ###############################
+print("ASV summary")
 # Create taxonomy table of the remaining asvs
 tax_tab1 <- crete_biodiversity %>%
     distinct(asv_id, Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
@@ -330,6 +359,7 @@ crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_
 
 ################################# Taxonomy #####################################
 
+print("taxonomic summary")
 ## how the information of communities of Cretan soils is distributed across 
 ## the taxonomic levels
 taxonomy_levels_occurrences <- crete_biodiversity %>%
@@ -395,3 +425,5 @@ genera_phyla_stats <- genera_phyla_samples %>%
     arrange(desc(n_samples))
 
 write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
+
+print("biodiversity script finished")
