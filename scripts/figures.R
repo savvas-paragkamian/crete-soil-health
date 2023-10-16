@@ -351,7 +351,7 @@ ggsave("figures/taxonomy_representative_phyla_samples.png",
 
 
 phyla_genera_bar <- ggplot(genera_phyla_stats, mapping=aes(x=Phylum, y=average_relative,fill=Genus)) +
-    geom_col(position="stack", stat="identity") +
+    geom_col(position="stack") +
     coord_flip()+
     theme_bw()+
     theme(legend.position="none")
@@ -727,6 +727,95 @@ ggsave("figures/ordination_umap_genera_plot_f.png",
        height = 50,
        width = 53,
        units="cm")
+
+
+############################## Functional profiles ############################
+### function
+clr <- function(x, na.rm = FALSE) {
+    log1p(x = x/(exp(x = sum(log1p(x = x[x > 0]), na.rm = TRUE)/length(x = x))))
+}
+
+
+scale2 <- function(x, na.rm = FALSE) (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+### load data
+faprotax_samples <- read_delim("results/faprotax_functional_table.tsv", delim="\t")
+faprotax_genera <- read_delim("results/faprotax_genera_functional_table.tsv", delim="\t")
+
+# filter empty
+faprotax_genera <- faprotax_genera[rowSums(faprotax_genera[,-1])!=0,]
+##### bar plot
+
+################################# Heatmap ###############################
+
+#faprotax_community_matrix <- crete_biodiversity %>%
+#    filter(classification %in% c("Genus","Species"), !is.na(srs_abundance)) %>%
+#    pivot_wider(id_cols=c(asv_id,taxonomy), names_from=ENA_RUN, values_from=srs_abundance, values_fill=0)
+
+#write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
+
+
+
+faprotax_genera_w <- faprotax_genera %>%
+    as.data.frame() %>% 
+    column_to_rownames("group") %>% 
+    mutate_all(clr) %>%
+    mutate_all(sqrt) 
+
+#drows = vegdist(phyla_samples_w, method="bray")
+dcols = vegdist(t(faprotax_genera[,-1]), method="bray")
+
+png("figures/functions_faprotax_genera.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+
+pheatmap(faprotax_genera_w,
+        # clustering_distance_cols = dcols,
+         color=colorRampPalette(c("skyblue", "cornflowerblue", "darkolivegreen4", "darkgoldenrod1","palevioletred3", "darkorchid1"))(50))
+
+dev.off()
+
+###### 
+
+faprotax_genera_l <- faprotax_genera %>%
+    pivot_longer(-group,names_to="ENA_RUN", values_to="value" ) %>%
+    filter(value!=0) %>%
+    mutate(value_clr = clr(value))
+
+plant_pathogen <- faprotax_genera_l %>%
+    filter(group=="plant_pathogen")
+
+
+human_pathogen <- faprotax_genera_l %>%
+    filter(group=="human_pathogens_all") %>%
+    arrange(desc(value))
+
+faprotax_bar <- ggplot() + 
+    geom_col(faprotax_genera_l, mapping=aes(x=ENA_RUN, y=value ,fill=group)) +
+    theme_bw()+
+    theme(axis.text.x = element_text(face="bold",
+                                     size = 10,
+                                     angle = 90,
+                                     vjust = 1,
+                                     hjust=1)) +
+    theme(legend.position="top")
+
+
+ggsave("figures/faprotax_genera_bar.png",
+       plot=faprotax_bar,
+       device="png",
+       height = 50,
+       width = 43,
+       units="cm")
+
+#phyla_samples_w <- phyla_samples_summary %>%
+#    pivot_wider(id_cols=ENA_RUN,
+#                names_from=Phylum,
+#                values_from=reads_srs_sum,
+#                values_fill=0) %>%
+#    as.data.frame() %>%
+#    column_to_rownames("ENA_RUN")
 
 
 ######################## Community ################################
