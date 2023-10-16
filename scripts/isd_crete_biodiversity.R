@@ -208,16 +208,6 @@ biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
 saveRDS(biodiversity_srs, "results/biodiversity_srs.RDS")
 #biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
 
-### save Faprotax format
-biodiversity_srs_faprotax <- biodiversity_srs %>%
-    rownames_to_column("asv_id") %>% 
-    left_join(taxa_asv_all[,c("asv_id","taxonomy")], by=c("asv_id"="asv_id")) %>%
-    as_tibble()
-
-write_delim(biodiversity_srs_faprotax,
-            "results/biodiversity_srs_faprotax.tsv",
-            delim="\t")
-
 ### remove the asvs that don't have a taxonomy
 ############################# Merge SRS ################################
 biodiversity_srs_l <- dist_long(biodiversity_srs,"srs_abundance")
@@ -242,6 +232,24 @@ nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_
 
 print("how many occurrences with srs abundace and Species")
 nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Species),])
+
+################################ save Faprotax format ############################
+### all asvs
+biodiversity_srs_faprotax <- biodiversity_srs %>%
+    rownames_to_column("asv_id") %>% 
+    left_join(taxa_asv_all[,c("asv_id","taxonomy")], by=c("asv_id"="asv_id")) %>%
+    as_tibble()
+
+write_delim(biodiversity_srs_faprotax,
+            "results/biodiversity_srs_faprotax.tsv",
+            delim="\t")
+
+#### faprotax with genera and species
+faprotax_community_matrix <- crete_biodiversity %>%
+    filter(classification %in% c("Genus","Species"), !is.na(srs_abundance)) %>%
+    pivot_wider(id_cols=c(asv_id,taxonomy), names_from=ENA_RUN, values_from=srs_abundance, values_fill=0)
+
+write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
 
 ######################## clean environment ######################## 
 
