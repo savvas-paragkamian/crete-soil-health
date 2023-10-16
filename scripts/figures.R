@@ -16,9 +16,12 @@
 ###############################################################################
 
 # load packages and functions
+#setwd("../")
+library(vegan)
 library(tidyverse)
 library(ggnewscale)
 library(ggpubr)
+library(pheatmap)
 library(sf)
 library(jpeg)
 library(raster)
@@ -144,7 +147,7 @@ crete_base <- ggplot() +
           legend.box.background = element_blank())
 
 
-ggsave("figures/fig1a.tiff",
+ggsave("figures/map_fig1a.tiff",
        plot=crete_base,
        height = 10,
        width = 20,
@@ -152,7 +155,7 @@ ggsave("figures/fig1a.tiff",
        units="cm",
        device="tiff")
 
-ggsave("figures/fig1a.png",
+ggsave("figures/map_fig1a.png",
        plot=crete_base,
        height = 10,
        width = 20,
@@ -206,7 +209,7 @@ crete_corine <- ggplot() +
           legend.key.size = unit(8, "mm"), 
           legend.text=element_text(size=8))
 
-ggsave("figures/Fig1b.tiff", 
+ggsave("figures/map_fig1b.tiff", 
        plot=crete_corine, 
        height = 10, 
        width = 20,
@@ -214,7 +217,7 @@ ggsave("figures/Fig1b.tiff",
        units="cm",
        device="tiff")
 
-ggsave("figures/Fig1b.png", 
+ggsave("figures/map_fig1b.png", 
        plot=crete_corine, 
        height = 10, 
        width = 20,
@@ -232,7 +235,7 @@ fig1 <- ggarrange(crete_base,crete_corine,
           font.label=list(color="black",size=22),
           legend="bottom") + bgcolor("white")
 
-ggsave("figures/Fig1.tiff", 
+ggsave("figures/map_fig1.tiff", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -240,7 +243,7 @@ ggsave("figures/Fig1.tiff",
        units="cm",
        device="tiff")
 
-ggsave("figures/Fig1.png", 
+ggsave("figures/map_fig1.png", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -248,7 +251,7 @@ ggsave("figures/Fig1.png",
        units="cm",
        device="png")
 
-ggsave("figures/Fig1.pdf", 
+ggsave("figures/map_fig1.pdf", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -256,7 +259,7 @@ ggsave("figures/Fig1.pdf",
        units="cm",
        device="pdf")
 
-ggsave("figures/Fig1-small.png", 
+ggsave("figures/map_fig1-small.png", 
        plot=fig1, 
        height = 30, 
        width = 30,
@@ -268,7 +271,41 @@ ggsave("figures/Fig1-small.png",
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 
-phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
+phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t") %>%
+    group_by(ENA_RUN) %>%
+    mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum))
+################################# Heatmap ###############################
+phyla_samples_w_z <- phyla_samples_summary %>%
+    pivot_wider(id_cols=ENA_RUN,
+                names_from=Phylum,
+                values_from=z_srs,
+                values_fill=0) %>%
+    as.data.frame() %>% 
+    column_to_rownames("ENA_RUN")
+
+phyla_samples_w <- phyla_samples_summary %>%
+    pivot_wider(id_cols=ENA_RUN,
+                names_from=Phylum,
+                values_from=reads_srs_sum,
+                values_fill=0) %>%
+    as.data.frame() %>%
+    column_to_rownames("ENA_RUN")
+
+drows = vegdist(phyla_samples_w, method="bray")
+dcols = vegdist(t(phyla_samples_w), method="robust.aitchison")
+
+png("figures/taxonomy_heatmap_phyla_samples.png",
+    res=300,
+    width=30,
+    height=70,
+    unit="cm")
+
+pheatmap(phyla_samples_w_z,
+         clustering_distance_rows = drows,
+         clustering_distance_cols = dcols,
+         color=colorRampPalette(c("skyblue", "white", "palevioletred3"))(20))
+
+dev.off()
 
 ############# Representative phyla of Cretan soils ########################
 
@@ -286,7 +323,7 @@ representative_phyla_rel <- ggplot(phyla_stats,
     panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
   )
 
-ggsave("figures/representative_phyla_rel.png",
+ggsave("figures/taxonomy_representative_phyla_rel.png",
        plot=representative_phyla_rel,
        device="png",
        height = 20,
@@ -303,7 +340,7 @@ representative_phyla_samples <- ggplot(phyla_stats,
     panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
   )
 
-ggsave("figures/representative_phyla_samples.png",
+ggsave("figures/taxonomy_representative_phyla_samples.png",
        plot=representative_phyla_samples,
        device="png",
        height = 20,
@@ -320,7 +357,7 @@ phyla_genera_bar <- ggplot(genera_phyla_stats, mapping=aes(x=Phylum, y=average_r
     theme(legend.position="none")
 
 
-ggsave("figures/genera_phyla_stats.png",
+ggsave("figures/taxonomy_genera_phyla_stats.png",
        plot=phyla_genera_bar,
        device="png",
        height = 20,
@@ -354,7 +391,7 @@ asv_stat_sample <- ggplot() +
           axis.title.y=element_text(face="bold", size=13),
           legend.position = c(0.88, 0.8))
 
-ggsave("figures/fig_asv_generalists.png",
+ggsave("figures/taxonomy_asv_generalists.png",
        plot=asv_stat_sample,
        device="png",
        height = 20,
@@ -382,14 +419,14 @@ asv_stat_sample_cla <- ggplot(data= asv_metadata, mapping=aes(x=n_samples, y=rea
           legend.position = "bottom") + 
     facet_wrap(vars(classification))
 
-ggsave("figures/fig_asv_generalists_cla.png",
+ggsave("figures/taxonomy_asv_generalists_cla.png",
        plot=asv_stat_sample_cla,
        device="png",
        height = 20,
        width = 23,
        units="cm")
 
-############################## genera ##########
+############################## genera ####################
 
 genera_stat_sample <- ggplot() +
     geom_point(genera_phyla_stats,
@@ -413,7 +450,7 @@ genera_stat_sample <- ggplot() +
           axis.title.y=element_text(face="bold", size=13),
           legend.position = "bottom")
 
-ggsave("figures/fig_genera_generalists.png",
+ggsave("figures/taxonomy_genera_generalists.png",
        plot=genera_stat_sample,
        device="png",
        height = 20,
@@ -422,7 +459,7 @@ ggsave("figures/fig_genera_generalists.png",
 
 genera_stat_sample_f <- genera_stat_sample + facet_wrap(vars(Phylum))
 
-ggsave("figures/fig_genera_generalists_facet.png",
+ggsave("figures/taxonomy_genera_generalists_facet.png",
        plot=genera_stat_sample_f,
        device="png",
        height = 50,
@@ -461,7 +498,7 @@ asv_sample_dist_plot <- ggplot() +
           axis.title.y=element_text(face="bold", size=13),
           legend.position = c(0.88, 0.8))
 
-ggsave("figures/fig_asv_n_samples.png",
+ggsave("figures/taxonomy_asv_n_samples.png",
        plot=asv_sample_dist_plot,
        device="png",
        height = 20,
