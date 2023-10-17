@@ -753,8 +753,6 @@ faprotax_genera <- faprotax_genera[rowSums(faprotax_genera[,-1])!=0,]
 
 #write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
 
-
-
 faprotax_genera_w <- faprotax_genera %>%
     as.data.frame() %>% 
     column_to_rownames("group") %>% 
@@ -784,8 +782,8 @@ faprotax_genera_l <- faprotax_genera %>%
     mutate(value_clr = clr(value))
 
 plant_pathogen <- faprotax_genera_l %>%
-    filter(group=="plant_pathogen")
-
+    filter(group=="plant_pathogen") %>%
+    arrange(desc(value))
 
 human_pathogen <- faprotax_genera_l %>%
     filter(group=="human_pathogens_all") %>%
