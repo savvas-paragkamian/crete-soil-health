@@ -1,12 +1,10 @@
 using FlashWeave
 
-data_path = string("results/")
+#data_path = "results/community_matrix_genera.tsv"
+data_path = string("results/network_genera_community_matrix.tsv")
 
-files = readdir(data_path)
-for file in files
-    file_path = string(data_path, '/', file)
-    print(file_path)
-#    network = learn_network(file_path, sensitive=true, heterogeneous=false, n_obs_min=10)
-#    saveloc = string(data_path, '/', file[begin:end-5], ".gml")
-#    save_network(saveloc, network)
-end
+#meta_data_path = "results/sample_metadata.tsv"
+netw_results = learn_network(data_path, sensitive=true, heterogeneous=false)
+
+save_network("results/network_output.gml", netw_results, detailed=true)
+
