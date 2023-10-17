@@ -241,7 +241,7 @@ biodiversity_srs_faprotax <- biodiversity_srs %>%
     as_tibble()
 
 write_delim(biodiversity_srs_faprotax,
-            "results/biodiversity_srs_faprotax.tsv",
+            "results/faprotax_biodiversity_srs.tsv",
             delim="\t")
 
 #### faprotax with genera and species
@@ -250,6 +250,7 @@ faprotax_community_matrix <- crete_biodiversity %>%
     pivot_wider(id_cols=c(asv_id,taxonomy), names_from=ENA_RUN, values_from=srs_abundance, values_fill=0)
 
 write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
+
 
 ######################## clean environment ######################## 
 
@@ -433,5 +434,19 @@ genera_phyla_stats <- genera_phyla_samples %>%
     arrange(desc(n_samples))
 
 write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
+
+################################ save network format ############################
+
+network_genera_community_matrix <- genera_phyla_samples %>%
+    filter(reads_srs_sum>0, !is.na(reads_srs_sum)) %>%
+    pivot_wider(id_cols=c(ENA_RUN),
+                names_from=Genus,
+                values_from=reads_srs_sum,
+                values_fill=0) %>%
+    column_to_rownames("ENA_RUN")
+
+write_delim(network_genera_community_matrix,"results/network_genera_community_matrix.tsv",delim="\t")
+
+##################################################################################
 
 print("biodiversity script finished")
