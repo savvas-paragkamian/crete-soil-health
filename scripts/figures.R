@@ -90,7 +90,7 @@ pcoa_isd_sites <- read_delim("results/ordination_pcoa_bray_sites.tsv", delim="\t
 pcoa_isd_sites_ucie <- ucie::data2cielab(pcoa_isd_sites, LAB_coordinates = F)
 colnames(pcoa_isd_sites_ucie) <- c("ENA_RUN","UCIE")
 write_delim(pcoa_isd_sites_ucie,"results/pcoa_isd_sites_ucie.tsv", delim="\t")
-
+#pcoa_isd_sites_ucie <- read_delim("results/pcoa_isd_sites_ucie.tsv")
 ############################### ucie with pcoa ########################
 #nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
 #colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
@@ -612,7 +612,7 @@ for (var in vars){
 }
 
 # Categorical variables to plot against diversity indices
-cats <- c("vegetation_zone", "LABEL1","LABEL2","LABEL3","elevation_bin")
+cats <- c("vegetation_zone", "LABEL1","LABEL2","LABEL3","elevation_bin", "location")
 
 metadata_diversity$elevation_bin <- factor(metadata_diversity$elevation_bin,
                         levels=unique(metadata_diversity$elevation_bin)[order(sort(unique(metadata_diversity$elevation_bin)))])
@@ -656,7 +656,8 @@ pcoa_isd_sites <- read_delim("results/ordination_pcoa_bray_sites.tsv", delim="\t
 ordination_sites <- nmds_isd_sites %>%
     left_join(umap_isd_sites, by=c("ENA_RUN"="id")) %>%
     left_join(pcoa_isd_sites_ucie) %>%
-    left_join(pcoa_isd_sites)
+    left_join(pcoa_isd_sites) %>% 
+    left_join(metadata)
 #    left_join(umap_isd_sites_k1 ,by=c("ENA_RUN"="id"))
 
 for (i in cats){
