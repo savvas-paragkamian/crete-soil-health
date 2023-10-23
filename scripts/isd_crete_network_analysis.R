@@ -98,8 +98,28 @@ plot(graph, layout=layout_in_circle,
 dev.off()
 
 
-ggraph(graph_tbl, layout = 'fr') + 
+gg <- ggraph(graph_tbl, layout = 'fr', weights=abs(weight)) + 
   geom_edge_link(aes(color=color)) + 
-  geom_node_point(aes(size = centrality_pagerank())) + 
+  geom_node_point(mapping=aes(colour=Phylum)) + 
+  scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
   theme(legend.position = 'bottom')
 
+ggsave("figures/network_fr.png",
+       plot=gg,
+       device="png",
+       height = 50,
+       width = 53,
+       units="cm")
+
+
+gg_matrix <- ggraph(graph, 'matrix') + 
+  geom_edge_point(aes(colour = color, size=abs(weight)), mirror = TRUE) + 
+  scale_edge_color_manual(values=c("red"="red", "green"="green"))+
+  theme(legend.position = 'bottom')
+
+ggsave("figures/network_matrix.png",
+       plot=gg_matrix,
+       device="png",
+       height = 50,
+       width = 53,
+       units="cm")
