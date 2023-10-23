@@ -614,6 +614,9 @@ for (var in vars){
 # Categorical variables to plot against diversity indices
 cats <- c("vegetation_zone", "LABEL1","LABEL2","LABEL3","elevation_bin")
 
+metadata_diversity$elevation_bin <- factor(metadata_diversity$elevation_bin,
+                        levels=unique(metadata_diversity$elevation_bin)[order(sort(unique(metadata_diversity$elevation_bin)))])
+
 for (cat in cats){
     diversity_boxplot(metadata_diversity, cat, "value", "diversity")
 }
