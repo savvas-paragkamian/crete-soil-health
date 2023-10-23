@@ -23,6 +23,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(tidygraph)
+library(ggraph)
 
 ############################### load data #####################################
 genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv", delim="\t") %>% dplyr::select(-reads_srs_sd)
@@ -66,10 +67,15 @@ graph_motifs <- motifs(graph, 3)
 
 
 
-################################## Centralities ###############################
+##############as_tbl_graph#################### Centralities ###############################
 
 V(graph)$degree <- degree(graph)
 V(graph)$strength <- strength(graph)
+
+graph_tbl <- graph %>%
+    as_tbl_graph() %>%
+    activate(nodes) %>% 
+    left_join(genera_phyla_stats, by=c("label"="Genus"))
 
 ############################## plot #####################################
 E(graph)$color <- ifelse(E(graph)$sign == "positive", "green", "red")
@@ -83,10 +89,17 @@ png(file="figures/network_genera_sign.png",
 
 plot(graph, layout=layout_in_circle,
      vertex.label=NA,
-     vertex.size=V(graph)$degree,
+     vertex.size=V(graph)$degree/10,
      edge.color=E(graph)$color,
+     edge.size=abs(E(graph)$weight)/100,
      vertex.frame.color="coral2",
      vertex.color="coral2",
      main = "Crete soil microbial interactome")
 dev.off()
+
+
+ggraph(graph_tbl, layout = 'fr') + 
+  geom_edge_link(aes(color=color)) + 
+  geom_node_point(aes(size = centrality_pagerank())) + 
+  theme(legend.position = 'bottom')
 
