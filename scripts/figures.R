@@ -116,6 +116,7 @@ crete_base <- ggplot() +
             size=1.7,
             alpha=0.6,
             show.legend=T) +
+    geom_jitter(width = 0.25, height = 0.25)+
 #    geom_sf(crete_peaks,
 #            mapping=aes(),
 #            colour=na,
@@ -303,7 +304,7 @@ png("figures/taxonomy_heatmap_phyla_samples.png",
 pheatmap(phyla_samples_w_z,
          clustering_distance_rows = drows,
          clustering_distance_cols = dcols,
-         color=colorRampPalette(c("skyblue", "white", "palevioletred3"))(20))
+         color=colorRampPalette(c("white", "skyblue", "palevioletred3"))(20))
 
 dev.off()
 
@@ -596,6 +597,8 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
            units="cm")
 }
 # Numerical variables to plot against diversity indices
+bioclim <- grep("bio.*", colnames(metadata_diversity),value=T)
+
 vars <- c( "latitude",
           "longitude",
           "elevation",
@@ -604,7 +607,8 @@ vars <- c( "latitude",
           "total_organic_carbon",
           "sample_volume_or_weight_for_DNA_extraction",
           "DNA_concentration",
-          "route")
+          "route",
+          bioclim)
 
 for (var in vars){
     
@@ -624,7 +628,7 @@ for (cat in cats){
 ######################### Ordination ############################
 ######### plots sites ###########
 
-ordination_sites_plot <- function(df,col,x_axis,y_axis,method){
+ordination_sites_plot <- function(df,col,x_axis,y_axis,method, color){
     
     shapes <- length(unique(df[[col]]))
     print(shapes)
@@ -632,7 +636,7 @@ ordination_sites_plot <- function(df,col,x_axis,y_axis,method){
         geom_point(data=df,
                    mapping=aes(x=.data[[x_axis]],
                                y=.data[[y_axis]],
-                               color=.data[["UCIE"]],
+                               color=.data[[color]],
                                shape=.data[[col]])) +
         scale_color_manual(values=df$UCIE, guide = "none")+
         scale_shape_manual(values=c(seq(0,shapes,1)))+
@@ -664,14 +668,16 @@ for (i in cats){
 
     if (is.character(ordination_sites[[i]]) & i!="ENA_RUN"){
         print(i)
-        ordination_sites_plot(ordination_sites, i,"NMDS1","NMDS2", "nmds")
-        ordination_sites_plot(ordination_sites, i,"UMAP1","UMAP2", "umap")
-        ordination_sites_plot(ordination_sites, i,"Axis.1","Axis.2", "pcoa")
+        ordination_sites_plot(ordination_sites, i,"NMDS1","NMDS2", "nmds","UCIE")
+        ordination_sites_plot(ordination_sites, i,"UMAP1","UMAP2", "umap","UCIE")
+        ordination_sites_plot(ordination_sites, i,"Axis.1","Axis.2", "pcoa","UCIE")
 
     }else{
         next
     }
 }
+# ordination of sites and their 2 locations. Are there differences? 
+ordination_sites_plot(ordination_sites,"location","NMDS1","NMDS2","nmds_site_loc","sites")
 ### 3d for inspection of the dimention reduction
 # 
 #library(plotly)
@@ -774,7 +780,13 @@ png("figures/functions_faprotax_genera.png",
 
 pheatmap(faprotax_genera_w,
         # clustering_distance_cols = dcols,
-         color=colorRampPalette(c("skyblue", "cornflowerblue", "darkolivegreen4", "darkgoldenrod1","palevioletred3", "darkorchid1"))(50))
+         color=colorRampPalette(c("white",
+                                  "skyblue",
+                                  "cornflowerblue",
+                                  "darkolivegreen4",
+                                  "darkgoldenrod1",
+                                  "palevioletred3",
+                                  "darkorchid1"))(50))
 
 dev.off()
 
@@ -808,8 +820,63 @@ ggsave("figures/faprotax_genera_bar.png",
        plot=faprotax_bar,
        device="png",
        height = 50,
-       width = 43,
+       width = 53,
        units="cm")
+
+
+faprotax_functions <- unique(faprotax_genera_l$group)
+
+for (fun in faprotax_functions){
+
+    faprotax_genera_loc <- faprotax_genera_l %>%
+        filter(group==fun) %>%
+        left_join(locations_spatial, by=c("ENA_RUN"="ENA_RUN"))
+    
+    quantile_4 <- quantile(faprotax_genera_loc$value,na.rm = T,probs = c(0.75)) 
+    
+    faprotax_genera_l_4<- faprotax_genera_loc %>% filter(value > quantile_4)
+    
+    
+    crete_function <- ggplot() +
+        geom_sf(crete_shp, mapping=aes()) +
+        geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
+        geom_point(faprotax_genera_l_4,
+                mapping=aes(x=longitude, y=latitude, color=value, size=value),
+                alpha=0.8,
+                show.legend=T) +
+        geom_label(data = faprotax_genera_l_4,
+                   mapping=aes(x = longitude, y = latitude, label = ENA_RUN),
+                   size = 1.8,
+                   nudge_x = 0.07,
+                   nudge_y=0.07,
+                   label.padding = unit(0.1, "lines"))+
+        scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
+                                      title="elevation",
+                                      direction = "vertical",
+                                      title.vjust = 0.8),
+                            colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
+                            breaks = c(100, 800, 1500, 2400),
+                            labels = c(100, 800, 1500, 2400))+
+        scale_color_gradient(low = "skyblue", high = "goldenrod3")+
+        ggtitle(fun) +
+        coord_sf(crs="wgs84") +
+        theme_bw()+
+        theme(axis.title=element_blank(),
+              axis.text=element_text(colour="black"),
+              legend.text=element_text(size=8),
+              legend.title = element_text(size=8),
+              legend.position = "bottom",
+              legend.box.background = element_blank())
+    
+    
+    ggsave(paste0("figures/map_faprotax_",fun,".png"),
+           plot=crete_function,
+           height = 10,
+           width = 20,
+           dpi = 300,
+           units="cm",
+           device="png")
+}
 
 #phyla_samples_w <- phyla_samples_summary %>%
 #    pivot_wider(id_cols=ENA_RUN,
