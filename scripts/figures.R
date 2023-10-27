@@ -36,8 +36,9 @@ genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
 
 # Metadata
-samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
+
+samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
 
 ## spatial
 locations_spatial <- metadata %>%
@@ -271,11 +272,28 @@ ggsave("figures/map_fig1-small.png",
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 
-phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t") %>%
+total_samples <- length(unique(genera_phyla_samples$ENA_RUN))
+
+phyla_genera_samples_summary <- genera_phyla_samples %>%
+    group_by(ENA_RUN,Phylum) %>%
+    summarise(asvs=sum(asvs),
+              reads_srs_mean=mean(reads_srs_mean),
+              reads_srs_sum=sum(reads_srs_sum), .groups="keep") %>%
     group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
     mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum))
+    
+phyla_stats <- phyla_genera_samples_summary %>% 
+    group_by(Phylum) %>%
+    summarise(n_samples=n(),
+              total_asvs=sum(asvs),
+              total_reads_srs=sum(reads_srs_sum),
+              proportion_sample=n_samples/total_samples,
+              average_relative=mean(relative_srs)) %>%
+    arrange(desc(average_relative))
+
 ################################# Heatmap ###############################
-phyla_samples_w_z <- phyla_samples_summary %>%
+phyla_samples_w_z <- phyla_genera_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
                 values_from=z_srs,
@@ -283,7 +301,7 @@ phyla_samples_w_z <- phyla_samples_summary %>%
     as.data.frame() %>% 
     column_to_rownames("ENA_RUN")
 
-phyla_samples_w <- phyla_samples_summary %>%
+phyla_samples_w <- phyla_genera_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
                 values_from=reads_srs_sum,
@@ -291,16 +309,16 @@ phyla_samples_w <- phyla_samples_summary %>%
     as.data.frame() %>%
     column_to_rownames("ENA_RUN")
 
-drows = vegdist(phyla_samples_w, method="bray")
-dcols = vegdist(t(phyla_samples_w), method="robust.aitchison")
+dcols = vegdist(phyla_samples_w, method="bray")
+drows = vegdist(t(phyla_samples_w), method="robust.aitchison")
 
 png("figures/taxonomy_heatmap_phyla_samples.png",
     res=300,
-    width=30,
-    height=70,
+    width=70,
+    height=30,
     unit="cm")
 
-pheatmap(phyla_samples_w_z,
+pheatmap(t(phyla_samples_w_z),
          clustering_distance_rows = drows,
          clustering_distance_cols = dcols,
          color=colorRampPalette(c("white", "skyblue", "palevioletred3"))(20))
@@ -308,8 +326,6 @@ pheatmap(phyla_samples_w_z,
 dev.off()
 
 ############# Representative phyla of Cretan soils ########################
-
-phyla_stats <- read_delim("results/phyla_stats.tsv",delim="\t")
 
 representative_phyla_rel <- ggplot(phyla_stats,
        aes(x = average_relative, y = reorder(Phylum, average_relative))) +
@@ -430,7 +446,7 @@ ggsave("figures/taxonomy_asv_generalists_cla.png",
 
 genera_stat_sample <- ggplot() +
     geom_point(genera_phyla_stats,
-               mapping=aes(x=n_samples,
+               mapping=aes(x=proportion_sample,
                            y=reads_srs_mean,
                            color=Phylum, size=average_relative)) +
 #    geom_errorbar(genera_phyla_stats,
@@ -439,7 +455,7 @@ genera_stat_sample <- ggplot() +
 #                              ymin=reads_srs_mean-reads_srs_sd,
 #                              ymax=reads_srs_mean+reads_srs_sd,
 #                              alpha=0.5, colour=Phylum))+
-    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+#    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
 #    scale_y_continuous(trans='log10', name = "ASVs",
 #                     breaks=trans_breaks('log10', function(x) 10^x),
 #                     labels=trans_format('log10', math_format(10^.x))) +
@@ -465,6 +481,14 @@ ggsave("figures/taxonomy_genera_generalists_facet.png",
        height = 50,
        width = 80,
        units="cm")
+
+########################## specialists ##############################
+phyla_specialists <- phyla_stats %>%
+    filter(proportion_sample<0.25) 
+
+
+phyla_specialists_samples <- phyla_genera_samples_summary %>%
+    filter(Phylum %in% phyla_specialists$Phylum)
 
 
 ######################### ASVs distribution vs samples #####################
