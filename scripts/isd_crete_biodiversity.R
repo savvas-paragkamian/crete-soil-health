@@ -171,7 +171,12 @@ summary(colSums(crete_biodiversity_matrix))
 table(colSums(crete_biodiversity_matrix) > 10000)
 
 ## SRS curve
-jpeg(file="results/isd_crete_srs_curve.jpeg")
+png(file="figures/isd_crete_srs_curve.jpeg",
+    width = 50,
+    height = 30,
+    res=300,
+    units = "cm",
+    bg="white")
 
 SRScurve(crete_biodiversity_matrix,
          metric = "richness",

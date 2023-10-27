@@ -102,7 +102,8 @@ gg <- ggraph(graph_tbl, layout = 'fr', weights=abs(weight)) +
   geom_edge_link(aes(color=color)) + 
   geom_node_point(mapping=aes(colour=Phylum)) + 
   scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
-  theme(legend.position = 'bottom')
+  theme(legend.position = 'bottom') +
+  theme_bw()
 
 ggsave("figures/network_fr.png",
        plot=gg,
@@ -111,6 +112,19 @@ ggsave("figures/network_fr.png",
        width = 53,
        units="cm")
 
+gg_circle <-  ggraph(graph_tbl, circular=T, weights=abs(weight)) + 
+  geom_edge_link(aes(color=color)) + 
+  geom_node_point(mapping=aes(colour=Phylum)) + 
+  scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
+  theme(legend.position = 'bottom') +
+  theme_bw()
+
+ggsave("figures/network_circular.png",
+       plot=gg_circle,
+       device="png",
+       height = 50,
+       width = 53,
+       units="cm")
 
 gg_matrix <- ggraph(graph, 'matrix') + 
   geom_edge_point(aes(colour = color, size=abs(weight)), mirror = TRUE) + 

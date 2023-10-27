@@ -28,14 +28,8 @@ library(tidyr)
 library(ggplot2)
 
 ################################## Load data ##################################
-crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
-asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
-phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
 genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
-genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
-#crete_biodiversity_matrix <- readRDS("results/crete_biodiversity_matrix.RDS")
 biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
-tax_tab <- readRDS("results/tax_tab.RDS")
 
 # Metadata
 
@@ -110,54 +104,7 @@ aitchison_l <- dist_long(aitchison, "robust.aitchison")
 ########################## Phylum level ########################
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
-
-phyla_dist_samples <- phyla_samples_summary %>% 
-    group_by(Phylum) %>%
-    summarise(n_samples=n(),
-              total_asvs=sum(asvs),
-              total_reads_srs=sum(reads_srs_sum),
-              average_relative=mean(relative_srs)) %>%
-    arrange(desc(average_relative)) %>% 
-    as.data.frame()
-
-rownames(phyla_dist_samples) <- phyla_dist_samples$Phylum
-phyla_dist_samples <- phyla_dist_samples[,-1]
-
 #####################################################################
-#################### ASV community matrix ###################
-#z <- betadiver(biodiversity_srs_t, "z")
-#mod <- with(metadata, betadisper(z, LABEL1))
-#sac <- specaccum(biodiversity_srs_t)
-
-# Ordination
-#nmds <- vegan::metaMDS(biodiversity_srs_t,
-#                       k=2,
-#                       distance = "bray",
-#                       trymax=100)
-#stressplot(nmds)
-#ordiplot(nmds,display="sites", cex=1.25)
-#ordisurf(nmds,metadata$dem,main="",col="forestgreen")
-#ordihull(nmds,display="sites",label=T,  groups=metadata$LABEL1, cex=1.25)
-#ordihull(nmds,display="sites",label=T,  groups=metadata$elevation, cex=1.25)
-
-
-#tse <- runUMAP(tse,
-#               name = "UMAP",
-#               assay.type = "counts",
-#               ncomponents = 3)
-#plotReducedDim(tse, "UMAP",
-#               colour_by = "Group",
-#               ncomponents = c(1:3))
-#### tests 
-
-#nmds <- vegan::metaMDS(t(crete_biodiversity_matrix),
-#                       k=2,
-#                       distance = "bray",
-#                       trymax=100)
-
-#stressplot(nmds)
-#ordiplot(nmds,display="sites", cex=1.25)
-
 ############### genera as taxa in the community matrix################
 print("genera as community")
 genera_samples_m <- genera_phyla_samples %>%
