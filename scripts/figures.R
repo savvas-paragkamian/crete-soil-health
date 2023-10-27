@@ -55,7 +55,7 @@ crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", co
 clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
 natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
 wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
-    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG)) %>%
+    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG))
 
 natura_crete_land <- st_intersection(natura_crete, crete_shp)
 natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
@@ -486,10 +486,57 @@ ggsave("figures/taxonomy_genera_generalists_facet.png",
 phyla_specialists <- phyla_stats %>%
     filter(proportion_sample<0.25) 
 
-
 phyla_specialists_samples <- phyla_genera_samples_summary %>%
     filter(Phylum %in% phyla_specialists$Phylum)
 
+base_crete_map <- ggplot() +
+        geom_sf(crete_shp, mapping=aes()) +
+        geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
+        scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
+                                      title="elevation",
+                                      direction = "vertical",
+                                      title.vjust = 0.8),
+                            colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
+                            breaks = c(100, 800, 1500, 2400),
+                            labels = c(100, 800, 1500, 2400))+
+        coord_sf(crs="wgs84") +
+        theme_bw()+
+        theme(axis.title=element_blank(),
+              axis.text=element_text(colour="black"),
+              legend.text=element_text(size=8),
+              legend.title = element_text(size=8),
+              legend.position = "bottom",
+              legend.box.background = element_blank())
+
+for (phy in phyla_stats$Phylum){
+
+    phyla_samples_loc <- phyla_genera_samples_summary %>%
+        filter(Phylum==phy) %>%
+        left_join(locations_spatial, by=c("ENA_RUN"="ENA_RUN"))
+    
+    crete_phylum <- base_crete_map +
+        geom_point(phyla_samples_loc,
+                mapping=aes(x=longitude, y=latitude, color=relative_srs, size=relative_srs),
+                alpha=0.8,
+                show.legend=T) +
+        geom_label(data = phyla_samples_loc,
+                   mapping=aes(x = longitude, y = latitude, label = ENA_RUN),
+                   size = 1.8,
+                   nudge_x = 0.07,
+                   nudge_y=0.07,
+                   label.padding = unit(0.1, "lines"))+
+        scale_color_gradient(low = "skyblue", high = "goldenrod3")+
+        ggtitle(phy) 
+    
+    
+    ggsave(paste0("figures/map_phyla_",phy,".png"),
+           plot=crete_phylum,
+           height = 10,
+           width = 20,
+           dpi = 300,
+           units="cm",
+           device="png")
+}
 
 ######################### ASVs distribution vs samples #####################
 
