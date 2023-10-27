@@ -69,6 +69,9 @@ crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", co
 clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
 natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
 wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp")
+wdpa_crete_wildlife <- wdpa_crete %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
+    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG))
+
 natura_crete_land <- st_intersection(natura_crete, crete_shp)
 natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
 # raster DEM hangling
@@ -137,6 +140,7 @@ metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_wor
 
 metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
 metadata_spatial <- st_join(metadata_spatial, natura_crete_land_sci, left=T)
+metadata_spatial <- st_join(metadata_spatial, wdpa_crete_wildlife, left=T)
 metadata_spatial$dem <- raster::extract(dem_crete, metadata_spatial, cellnumbers=F)
 
 metadata <- metadata_spatial %>% 
@@ -144,8 +148,10 @@ metadata <- metadata_spatial %>%
     dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark)) %>%
     mutate(elevation_bin=cut(elevation, 
                              breaks=seq.int(from=0, to=2500, by=400),
-                             dig.lab = 5 ))
-
+                             dig.lab = 5 )) %>%
+    mutate(protection_status = ifelse(is.na(SITETYPE) & is.na(DESIG_ENG), "none",
+                                      ifelse(SITETYPE=="B" & is.na(DESIG_ENG),"Natura2000",
+                                             ifelse(is.na(SITETYPE) & DESIG_ENG=="Wildlife Refuge", "Wildlife Refuge", "both"))))
 
 write_delim(metadata,"results/metadata_spatial.tsv", delim="\t")
 
