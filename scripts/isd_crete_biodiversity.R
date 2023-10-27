@@ -387,7 +387,7 @@ write_delim(taxonomy_levels_occurrences,"results/taxonomy_levels_occurrences.tsv
 ## Phyla distribution, average relative abundance and ubiquity
 
 phyla_samples_summary <- crete_biodiversity %>%
-    filter(!is.na(srs_abundance), !is.na(Phylum)) %>%
+    filter(!is.na(srs_abundance), !is.na(Phylum), srs_abundance > 0) %>%
     group_by(ENA_RUN,Phylum) %>%
     summarise(asvs=n(),
               reads_srs_mean=mean(srs_abundance),
