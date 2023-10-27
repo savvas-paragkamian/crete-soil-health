@@ -20,8 +20,10 @@ library(tibble)
 library(readr)
 library(tidyr)
 library(mia)
-#library(ANCOMBC)
+library(ANCOMBC)
 
+crete_biodiversity_matrix <- readRDS("results/crete_biodiversity_matrix.RDS")
+biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
 # ancombc analysis
 
 assays = SimpleList(counts = crete_biodiversity_matrix)
