@@ -7,7 +7,8 @@
 ###############################################################################
 # GOAL:
 # Aim of this script is to retrieve all available attributes from 
-# ENA assigned to each sample of ISD Crete 2016.
+# ENA assigned to each sample of ISD Crete 2016. These are mentioned in
+# filereport_read_run_PRJEB21776_tsv.txt file
 ###############################################################################
 # usage:./get_isd_crete_2016_attributes.py
 ###############################################################################
@@ -53,7 +54,7 @@ def attr_request(accession):
 def write_xml(attributes,accession):
     
     # load to xml
-    newxml = "../ena_samples/" + "attributes_" + str(accession) + ".xml"
+    newxml = "../ena_samples_attr/" + "attributes_" + str(accession) + ".xml"
     
     with open(newxml, "w") as xmlFile:
         xmlFile.write(attributes)

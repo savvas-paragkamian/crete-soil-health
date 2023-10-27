@@ -13,7 +13,7 @@ runs_accession=`gawk -F"\t" '(NR>1){split($7,fastq, ";") ; for (i in fastq){prin
     ~/isd-crete/ena_metadata/filereport_read_run_PRJEB21776_tsv.txt`
 
 # go to directory
-cd ~/isd-crete/ena_fastq
+cd ~/isd-crete/ena_data
 
 # for each ftp link wget and append to a log file
 for i in $runs_accession

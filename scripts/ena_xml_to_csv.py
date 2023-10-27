@@ -9,7 +9,7 @@
 # Aim of this script is to transform the xml available attributes from 
 # ENA assigned to each sample of ISD Crete 2016 to csv.
 ###############################################################################
-# usage:./ena_xml_to_csv.py
+# usage:./scripts/ena_xml_to_csv.py
 ###############################################################################
 import xml.etree.ElementTree as ET
 import csv
