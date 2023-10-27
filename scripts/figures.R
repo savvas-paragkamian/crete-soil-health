@@ -30,23 +30,20 @@ library(ucie)
 
 ################################## Load data ##################################
 ## biodiversity
-crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+#crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
 genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
-tax_tab <- readRDS("results/tax_tab.RDS")
 
 # Metadata
 samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
 ## spatial
-locations_spatial <- read_delim("spatial_data/ISD_sites_coordinates.tsv", delim="\t",col_names=T) %>%
+locations_spatial <- metadata %>%
     st_as_sf(coords=c("longitude", "latitude"),
              remove=F,
-             crs="WGS84") %>%
-    left_join(metadata[,c("source_material_identifiers","ENA_RUN")],by=c("id"="source_material_identifiers"))
-
+             crs="WGS84")
 
 crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
 crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
@@ -56,7 +53,9 @@ crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", co
 
 clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
 natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
-wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp")
+wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
+    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG)) %>%
+
 natura_crete_land <- st_intersection(natura_crete, crete_shp)
 natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
 # raster DEM hangling
@@ -616,7 +615,13 @@ for (var in vars){
 }
 
 # Categorical variables to plot against diversity indices
-cats <- c("vegetation_zone", "LABEL1","LABEL2","LABEL3","elevation_bin", "location")
+cats <- c("vegetation_zone",
+          "LABEL1",
+          "LABEL2",
+          "LABEL3",
+          "elevation_bin",
+          "location",
+          "protection_status")
 
 metadata_diversity$elevation_bin <- factor(metadata_diversity$elevation_bin,
                         levels=unique(metadata_diversity$elevation_bin)[order(sort(unique(metadata_diversity$elevation_bin)))])
@@ -764,6 +769,7 @@ faprotax_genera <- faprotax_genera[rowSums(faprotax_genera[,-1])!=0,]
 #write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
 
 faprotax_genera_w <- faprotax_genera %>%
+    filter(!(group %in% c("aerobic_chemoheterotrophy", "chemoheterotrophy"))) %>%
     as.data.frame() %>% 
     column_to_rownames("group") %>% 
     mutate_all(clr) %>%
