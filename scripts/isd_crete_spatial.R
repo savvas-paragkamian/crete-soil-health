@@ -133,22 +133,30 @@ for (f in world_clim_files){
     metadata_world_clim[,world_clim_variable] <- raster::extract(raster_tmp, sf_world_clim, cellnumbers=F)  
 }
 
-################################### Lithology ################################
-crete_geology <- st_read("spatial_data/crete_geology/crete_geology.shp")
+################################### geology ################################
+### the original data have EPSF:2001 and encoding = ISO 8859-7. I changed them to 
+### EPSG:4326 and encoding UTF-8
+crete_geology <- st_read("spatial_data/crete_geology/crete_geology.shp") 
 crete_geology <- st_make_valid(crete_geology) # there is an error for an overlapping loop
+# 2 points ERR3697698 and ERR3697699 don't overlap with the polygons.
+# For polygons there is a function, st_nearest_feature that finds the nearest polygon
+# then with cbind join the odjects
+nearest_geology = st_nearest_feature(metadata_spatial,crete_geology)
+nearest_geology_join = cbind(metadata_spatial, st_drop_geometry(crete_geology)[nearest_geology,]) %>% 
+    dplyr::select(ENA_RUN, geology_fo,geology_na,geology_id) %>% st_drop_geometry()
 
 ################################## Enrichment ################################
+metadata_spatial <- metadata_spatial %>% left_join(nearest_geology_join,join_by(ENA_RUN)) 
 metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_world_clim))
 
 metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
 metadata_spatial <- st_join(metadata_spatial, natura_crete_land_sci, left=T)
 metadata_spatial <- st_join(metadata_spatial, wdpa_crete_wildlife, left=T)
-metadata_spatial <- st_join(metadata_spatial, crete_geology, left=T) 
 metadata_spatial$dem <- raster::extract(dem_crete, metadata_spatial, cellnumbers=F)
 
 metadata <- metadata_spatial %>% 
     st_drop_geometry() %>% 
-    dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark, layer)) %>%
+    dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark)) %>%
     mutate(elevation_bin=cut(elevation, 
                              breaks=seq.int(from=0, to=2500, by=400),
                              dig.lab = 5 )) %>%
