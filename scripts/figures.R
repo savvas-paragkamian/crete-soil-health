@@ -38,6 +38,9 @@ genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t"
 # Metadata
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
+metadata$elevation_bin <- factor(metadata$elevation_bin,
+                        levels=unique(metadata$elevation_bin)[order(sort(unique(metadata$elevation_bin)))])
+
 samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
 
 ## spatial
@@ -90,13 +93,15 @@ pcoa_isd_sites <- read_delim("results/ordination_pcoa_bray_sites.tsv", delim="\t
 pcoa_isd_sites_ucie <- ucie::data2cielab(pcoa_isd_sites, LAB_coordinates = F)
 colnames(pcoa_isd_sites_ucie) <- c("ENA_RUN","UCIE")
 write_delim(pcoa_isd_sites_ucie,"results/pcoa_isd_sites_ucie.tsv", delim="\t")
-#pcoa_isd_sites_ucie <- read_delim("results/pcoa_isd_sites_ucie.tsv")
+pcoa_isd_sites_ucie <- read_delim("results/pcoa_isd_sites_ucie.tsv")
 ############################### ucie with pcoa ########################
 #nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
 #colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
 #write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
 
-
+metadata %>% arrange(desc(total_nitrogen)) %>% head(n=2) # ERR3697708 , ERR3697732
+metadata %>% arrange(desc(total_organic_carbon)) %>% head(n=10) # ERR3697655, ERR3697675
+metadata %>% arrange(desc(water_content)) %>% head(n=2) ## ERR3697703, ERR3697702 
 ############################# ucie to location data ####################
 locations_spatial <- locations_spatial %>%
     left_join(pcoa_isd_sites_ucie,by=c("ENA_RUN"="ENA_RUN"))
@@ -108,11 +113,12 @@ palette.colors(palette = "Okabe-Ito")
 # Crete figures
 cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darkorchid1", "goldenrod3", "palevioletred3", "peachpuff4", "turquoise","skyblue")
 
+print("printing base maps")
 crete_base <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
     geom_point(locations_spatial,
-            mapping=aes(x=longitude, y=latitude, color=UCIE, shape=route),
+            mapping=aes(x=longitude, y=latitude, color=UCIE, shape=as.character(route)),
             size=1.7,
             alpha=0.6,
             show.legend=T) +
@@ -136,8 +142,8 @@ crete_base <- ggplot() +
                         colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
                         breaks = c(100, 800, 1500, 2400),
                         labels = c(100, 800, 1500, 2400))+
-    scale_color_manual(values=locations_spatial$UCIE, guide=F)+
-    scale_shape_manual(values=c(seq(0,9,1)))+
+    scale_color_manual(values=locations_spatial$UCIE, guide="none")+
+    scale_shape_manual(values=c(seq(0,9,1)),name="route")+
     coord_sf(crs="wgs84") +
     theme_bw()+
     theme(axis.title=element_blank(),
@@ -591,6 +597,25 @@ metadata_diversity <- metadata %>%
                  names_to="diversity",
                  values_to="value") %>%
     as.data.frame()
+# metadata abiotic values
+metadata_abiotic <- metadata %>%
+    pivot_longer(cols=c(latitude,
+                        longitude,
+                        elevation,
+                        total_nitrogen,
+                        water_content,
+                        total_organic_carbon,
+                        sample_volume_or_weight_for_DNA_extraction,
+                        DNA_concentration),
+                 names_to="abiotic_metadata",
+                 values_to="value") %>%
+    as.data.frame()
+# metadata bioclim
+metadata_bioclim <- metadata %>%
+    pivot_longer(cols = grep("bio_*", colnames(.)),
+                 names_to="bioclim_metadata",
+                 values_to="value") %>%
+    as.data.frame()
 ## function
 diversity_boxplot <- function(dataset, x_axis, y_axis, grouping_var){
     plotname <- paste0("figures/",
@@ -615,7 +640,7 @@ diversity_boxplot <- function(dataset, x_axis, y_axis, grouping_var){
                                          angle = 45,
                                          vjust = 1,
                                          hjust=1)) +
-        facet_wrap(vars(diversity), scales = "free")
+        facet_wrap(vars(grouping_var), scales = "free")
     
     ggsave(plotname, 
            plot=box_diversity, 
@@ -657,7 +682,7 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
               axis.title.x=element_text(face="bold", size=13),
               axis.title.y=element_text(face="bold", size=13),
               legend.position = c(0.88, 0.8)) +
-        facet_wrap(vars(diversity), scales = "free")
+        facet_wrap(vars(grouping_var), scales = "free")
    
     ggsave(plotname,
            plot=gradient,
@@ -667,9 +692,8 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
            units="cm")
 }
 # Numerical variables to plot against diversity indices
-bioclim <- grep("bio.*", colnames(metadata_diversity),value=T)
 
-vars <- c( "latitude",
+vars <- c("latitude",
           "longitude",
           "elevation",
           "total_nitrogen",
@@ -677,13 +701,33 @@ vars <- c( "latitude",
           "total_organic_carbon",
           "sample_volume_or_weight_for_DNA_extraction",
           "DNA_concentration",
-          "route",
-          bioclim)
+          "route")
 
+for (var in vars){
+
+    # bioclimatic variables boxplots
+    gradient_scatterplot(metadata_bioclim, var, "value", "bioclim_metadata")
+}
+# add the bioclim variables to the variables
+bioclim <- grep("bio.*", colnames(metadata_diversity),value=T)
+vars <- c(vars, bioclim)
 for (var in vars){
     
     gradient_scatterplot(metadata_diversity, var, "value", "diversity")
 }
+
+# abiotic pairs scatterplots
+abiotic <- c("total_nitrogen",
+             "water_content",
+             "total_organic_carbon",
+             "sample_volume_or_weight_for_DNA_extraction",
+             "DNA_concentration")
+
+abiotic_comb <- as.data.frame(t(combn(abiotic,2)))
+
+gradient_scatterplot(metadata_diversity,"total_nitrogen", "total_organic_carbon", "elevation_bin") 
+gradient_scatterplot(metadata_diversity,"total_nitrogen", "total_organic_carbon", "LABEL1") 
+gradient_scatterplot(metadata_diversity,"total_nitrogen", "total_organic_carbon", "LABEL2") 
 
 # Categorical variables to plot against diversity indices
 cats <- c("vegetation_zone",
@@ -692,13 +736,17 @@ cats <- c("vegetation_zone",
           "LABEL3",
           "elevation_bin",
           "location",
-          "protection_status")
+          "protection_status",
+          "geology_na")
 
-metadata_diversity$elevation_bin <- factor(metadata_diversity$elevation_bin,
-                        levels=unique(metadata_diversity$elevation_bin)[order(sort(unique(metadata_diversity$elevation_bin)))])
-
+metadata_diversity <- metadata_diversity %>% filter(!is.na(geology_na))
 for (cat in cats){
+    # diversity indices boxplots
     diversity_boxplot(metadata_diversity, cat, "value", "diversity")
+    # abiotic metadata boxplots
+    diversity_boxplot(metadata_abiotic, cat, "value", "abiotic_metadata") 
+    # bioclimatic variables boxplots
+    diversity_boxplot(metadata_bioclim, cat, "value", "bioclim_metadata")
 }
 
 ######################### Ordination ############################
