@@ -99,9 +99,6 @@ pcoa_isd_sites_ucie <- read_delim("results/pcoa_isd_sites_ucie.tsv")
 #colnames(nmds_isd_taxa_ucie) <- c("scientificName","UCIE")
 #write_delim(nmds_isd_taxa_ucie,"results/nmds_isd_taxa_ucie.tsv", delim="\t")
 
-metadata %>% arrange(desc(total_nitrogen)) %>% head(n=2) # ERR3697708 , ERR3697732
-metadata %>% arrange(desc(total_organic_carbon)) %>% head(n=10) # ERR3697655, ERR3697675
-metadata %>% arrange(desc(water_content)) %>% head(n=2) ## ERR3697703, ERR3697702 
 ############################# ucie to location data ####################
 locations_spatial <- locations_spatial %>%
     left_join(pcoa_isd_sites_ucie,by=c("ENA_RUN"="ENA_RUN"))
@@ -904,6 +901,35 @@ png("figures/functions_faprotax_genera.png",
     unit="cm")
 
 pheatmap(faprotax_genera_w,
+         clustering_distance_cols = dcols,
+         color=colorRampPalette(c("white",
+                                  "skyblue",
+                                  "cornflowerblue",
+                                  "darkolivegreen4",
+                                  "darkgoldenrod1",
+                                  "palevioletred3",
+                                  "darkorchid1"))(50))
+
+dev.off()
+
+# heatmap with geology order
+my_sample_col <- metadata %>%
+    filter(ENA_RUN %in% colnames(faprotax_genera_w)) %>%
+    dplyr::select(geology_na,ENA_RUN) %>%
+    arrange(geology_na) %>%
+    column_to_rownames("ENA_RUN") %>%
+    as.data.frame()
+
+
+png("figures/functions_faprotax_genera_geology.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+
+pheatmap(faprotax_genera_w[,rownames(my_sample_col)],
+         annotation_col = my_sample_col, 
+         cluster_cols = FALSE,
         # clustering_distance_cols = dcols,
          color=colorRampPalette(c("white",
                                   "skyblue",
@@ -915,6 +941,32 @@ pheatmap(faprotax_genera_w,
 
 dev.off()
 
+# heatmap with label2 order
+my_sample_col <- metadata %>%
+    filter(ENA_RUN %in% colnames(faprotax_genera_w)) %>%
+    dplyr::select(LABEL2,ENA_RUN) %>%
+    arrange(LABEL2) %>%
+    column_to_rownames("ENA_RUN") %>%
+    as.data.frame()
+
+png("figures/functions_faprotax_genera_LABEL2.png",
+    res=300,
+    width=70,
+    height=40,
+    unit="cm")
+
+pheatmap(faprotax_genera_w[,rownames(my_sample_col)],
+         annotation_col = my_sample_col, 
+         cluster_cols = FALSE,
+         color=colorRampPalette(c("white",
+                                  "skyblue",
+                                  "cornflowerblue",
+                                  "darkolivegreen4",
+                                  "darkgoldenrod1",
+                                  "palevioletred3",
+                                  "darkorchid1"))(50))
+
+dev.off()
 ###### 
 
 faprotax_genera_l <- faprotax_genera %>%
