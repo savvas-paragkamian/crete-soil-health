@@ -56,6 +56,7 @@ crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", co
              crs="WGS84")
 
 clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
+crete_geology <- st_read("spatial_data/crete_geology/crete_geology.shp")
 natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
 wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
     mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG))
@@ -267,6 +268,65 @@ ggsave("figures/map_fig1-small.png",
        plot=fig1, 
        height = 30, 
        width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+#################### geology #######################
+cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darkorchid1", "goldenrod3", "palevioletred3", "peachpuff4", "turquoise","skyblue")
+
+crete_geology_plot <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_sf(crete_geology,
+            mapping=aes(fill=geology_na),
+            alpha=1,
+            colour="transparent",
+            show.legend=T) +
+    geom_point(locations_spatial,
+            mapping=aes(x=longitude, y=latitude),
+            size=1.7,
+            color="gray50",
+            alpha=0.4,
+            show.legend=F) +
+    scale_fill_manual(values = c("-"="#000000",
+                                 "fo"="chocolate1",
+                                 "ft" = "cornflowerblue",
+                                 "J-E" = "darkgoldenrod1",
+                                 "K-E" = "darkolivegreen4",
+                                 "K.k" = "darkorchid1",
+                                 "Mk" = "goldenrod3",
+                                 "Mm.I" = "palevioletred3",
+                                 "o" = "peachpuff4",
+                                 "Ph-T" = "turquoise",
+                                 "Q.al" = "skyblue",
+                                 "T.br" = "#A6CEE3",
+                                 "f" = "#1F78B4",
+                                 "K.m" = "#B2DF8A"),
+                      guide = "legend") +
+    guides(fill = guide_legend(override.aes = list(color = "transparent", alpha=1) ),
+           colour = "none" )+
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          axis.text=element_text(colour="black"),
+          legend.title = element_blank(),
+          legend.position = "bottom",
+          legend.box.background = element_blank(),
+          legend.key.size = unit(8, "mm"), 
+          legend.text=element_text(size=8))
+
+ggsave("figures/map_crete_geology.tiff", 
+       plot=crete_geology_plot, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_geology.png", 
+       plot=crete_geology_plot, 
+       height = 10, 
+       width = 20,
        dpi = 300, 
        units="cm",
        device="png")
