@@ -56,6 +56,12 @@ dist_long <- function(x,method){
 ######
 ###
 metadata <- metadata %>% filter(ENA_RUN %in% colnames(biodiversity_srs))
+
+### 
+print("samples with highest values of physicochemical properties")
+metadata %>% arrange(desc(total_nitrogen)) %>% head(n=2) # ERR3697708 , ERR3697732
+metadata %>% arrange(desc(total_organic_carbon)) %>% head(n=10) # ERR3697655, ERR3697675
+metadata %>% arrange(desc(water_content)) %>% head(n=2) ## ERR3697703, ERR3697702 
 ####################### Destriptors Statistics ###############################
 print("descriptors stats")
 pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
