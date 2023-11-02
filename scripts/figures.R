@@ -17,6 +17,8 @@
 
 # load packages and functions
 #setwd("../")
+source("scripts/functions.R")
+
 library(vegan)
 library(tidyverse)
 library(ggnewscale)
@@ -249,7 +251,7 @@ ggsave("figures/map_fig1.tiff",
        device="tiff")
 
 ggsave("figures/map_fig1.png", 
-       plot=fig1, 
+       lot=fig1, 
        height = 30, 
        width = 30,
        dpi = 300, 
@@ -673,81 +675,11 @@ metadata_bioclim <- metadata %>%
                  names_to="bioclim_metadata",
                  values_to="value") %>%
     as.data.frame()
-## function
-diversity_boxplot <- function(dataset, x_axis, y_axis, grouping_var){
-    plotname <- paste0("figures/",
-                       grouping_var,
-                       "_",
-                       x_axis,
-                       "_boxplot.png")
-    x_lab <- x_axis
-    y_lab <- y_axis
-    dataset$x_axis <- dataset[,x_axis]
-    dataset$y_axis <- dataset[,y_axis]
-    dataset$grouping_var <- dataset[,grouping_var]
-
-    box_diversity <- ggplot(dataset, mapping=aes(x=x_axis, y=y_axis)) +
-        geom_boxplot()+
-        geom_jitter(width = 0.2)+
-        xlab(x_lab)+
-        ylab(y_lab) +
-        theme_bw()+
-        theme(axis.text.x = element_text(face="bold",
-                                         size = 10,
-                                         angle = 45,
-                                         vjust = 1,
-                                         hjust=1)) +
-        facet_wrap(vars(grouping_var), scales = "free")
-    
-    ggsave(plotname, 
-           plot=box_diversity, 
-           device="png", 
-           height = 45, 
-           width = 30, 
-           units="cm")
-}
 
 #################### Sample diversity gradients ######################
 ## similar to Structure and function of the global topsoil microbiome but
 ## without the statistic test.
 
-gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
-    
-    ## the dataset must be a dataframe, not a tibble, the colnames
-    ## must characters
-
-    ## keep the character names of column names to pass to plot
-    ##
-    plotname <- paste0("figures/",
-                       grouping_var,
-                       "_",
-                       x_axis,
-                       "_gradient.png")
-    x_lab <- x_axis
-    y_lab <- y_axis
-    dataset$x_axis <- dataset[,x_axis]
-    dataset$y_axis <- dataset[,y_axis]
-    dataset$grouping_var <- dataset[,grouping_var]
-
-    gradient <- ggplot(dataset, mapping=aes(x=x_axis, y=y_axis)) +
-        geom_point()+
-        xlab(x_lab)+
-        ylab(y_lab) +
-        theme_bw() +
-        theme(panel.grid = element_blank(),
-              axis.text = element_text(size=13),
-              axis.title.x=element_text(face="bold", size=13),
-              axis.title.y=element_text(face="bold", size=13),
-              legend.position = c(0.88, 0.8)) +
-        facet_wrap(vars(grouping_var), scales = "free")
-   
-    ggsave(plotname,
-           plot=gradient,
-           device="png",
-           height = 20,
-           width = 23,
-           units="cm")
-}
 # Numerical variables to plot against diversity indices
 
 vars <- c("latitude",
@@ -765,6 +697,7 @@ for (var in vars){
     # bioclimatic variables boxplots
     gradient_scatterplot(metadata_bioclim, var, "value", "bioclim_metadata")
 }
+
 # add the bioclim variables to the variables
 bioclim <- grep("bio.*", colnames(metadata_diversity),value=T)
 vars <- c(vars, bioclim)
@@ -809,28 +742,6 @@ for (cat in cats){
 ######################### Ordination ############################
 ######### plots sites ###########
 
-ordination_sites_plot <- function(df,col,x_axis,y_axis,method, color){
-    
-    shapes <- length(unique(df[[col]]))
-    print(shapes)
-    sites_plot <- ggplot() +
-        geom_point(data=df,
-                   mapping=aes(x=.data[[x_axis]],
-                               y=.data[[y_axis]],
-                               color=.data[[color]],
-                               shape=.data[[col]])) +
-        scale_color_manual(values=df$UCIE, guide = "none")+
-        scale_shape_manual(values=c(seq(0,shapes,1)))+
-        coord_fixed() +
-        theme_bw()
-
-    ggsave(paste0("figures/ordination_",method,"_sites_plot_",col,".png"),
-        plot=sites_plot,
-        device="png",
-        height = 20,
-        width = 23,
-        units="cm")
-}
 
 nmds_isd_sites <- read_delim("results/nmds_isd_sites.tsv", delim="\t")
 umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
@@ -844,6 +755,8 @@ ordination_sites <- nmds_isd_sites %>%
     left_join(pcoa_isd_sites) %>% 
     left_join(metadata)
 #    left_join(umap_isd_sites_k1 ,by=c("ENA_RUN"="id"))
+ordination_sites$elevation_bin <- factor(ordination_sites$elevation_bin,
+                        levels=unique(ordination_sites$elevation_bin)[order(sort(unique(ordination_sites$elevation_bin)))])
 
 for (i in cats){
 
@@ -863,6 +776,13 @@ ordination_sites_plot(ordination_sites,"location","NMDS1","NMDS2","nmds_site_loc
 # 
 #library(plotly)
 #plot_ly(x=umap_isd_sites_k3$UMAP1, y=umap_isd_sites_k3$UMAP2, z=umap_isd_sites_k3$UMAP3, type="scatter3d", mode="markers")
+
+########################## Ordination and Boxplots ###########################
+source("scripts/functions.R")
+
+boxplot_single(ordination_sites, "UMAP1", "LABEL2", "elevation_bin")
+boxplot_single(ordination_sites, "elevation_bin", "UMAP2", "elevation_bin")
+ordination_sites_plot(ordination_sites, "elevation_bin","UMAP1","UMAP2", "umap","elevation_bin")
 
 ######### plots genera ###########
 
@@ -918,6 +838,7 @@ ggsave("figures/ordination_umap_genera_plot_f.png",
        height = 50,
        width = 53,
        units="cm")
+
 
 
 ############################## Functional profiles ############################
