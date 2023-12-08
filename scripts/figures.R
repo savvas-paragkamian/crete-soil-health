@@ -374,6 +374,7 @@ ggsave("figures/map_crete_geology.png",
 ################################# Taxonomy #####################################
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
+#phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
 
 total_samples <- length(unique(community_matrix_l$ENA_RUN))
 
@@ -394,6 +395,36 @@ phyla_stats <- phyla_samples_summary %>%
               proportion_sample=n_samples/total_samples,
               average_relative=mean(relative_srs)) %>%
     arrange(desc(average_relative))
+
+############################### phyla ratios matter ###########################
+n_phyla <- length(unique(phyla_samples_summary$Phylum))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+fill_colors <- colorRampPalette(okabe_ito_colors)(n_phyla)
+
+phyla_ratios_bar <- ggplot() + 
+    geom_col(phyla_samples_summary, mapping=aes(x=ENA_RUN,
+                                                y=relative_srs,
+                                                fill=Phylum)) +
+    scale_fill_manual(values=fill_colors) +
+    theme_bw()+
+    coord_flip()+
+    scale_y_continuous(expand = c(0, 0), name="")+
+    theme(axis.text.x = element_text(face="bold",
+                                     size = 15),
+          axis.ticks.y=element_blank(),axis.title=element_blank(),
+          axis.text.y=element_text(size=10, hjust=0, vjust=0)) +
+    theme(legend.position="bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(), #remove major gridlines
+            panel.grid.minor = element_blank())+
+    guides(fill=guide_legend(nrow=7,byrow=TRUE))
+
+ggsave("figures/taxonomy_phyla_ratios_samples.png",
+       plot=phyla_ratios_bar,
+       device="png",
+       height = 55,
+       width = 38,
+       units="cm")
 
 ################################# Heatmap ###############################
 phyla_samples_w_z <- phyla_samples_summary %>%
@@ -816,7 +847,6 @@ ordination_sites_plot(ordination_sites,"location","NMDS1","NMDS2","nmds_site_loc
 #plot_ly(x=umap_isd_sites_k3$UMAP1, y=umap_isd_sites_k3$UMAP2, z=umap_isd_sites_k3$UMAP3, type="scatter3d", mode="markers")
 
 ########################## Ordination and Boxplots ###########################
-source("scripts/functions.R")
 
 boxplot_single(ordination_sites, "UMAP1", "LABEL2", "elevation_bin")
 boxplot_single(ordination_sites, "elevation_bin", "UMAP2", "elevation_bin")
