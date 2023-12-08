@@ -32,6 +32,7 @@ library(ucie)
 
 ################################## Load data ##################################
 ## biodiversity
+community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
 genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
@@ -93,9 +94,9 @@ print("starting UCIE")
 pcoa_isd_sites <- read_delim("results/ordination_pcoa_bray_sites.tsv", delim="\t") %>%
     column_to_rownames("ENA_RUN") %>% dplyr::select(Axis.1, Axis.2, Axis.3)
 
-pcoa_isd_sites_ucie <- ucie::data2cielab(pcoa_isd_sites, LAB_coordinates = F)
-colnames(pcoa_isd_sites_ucie) <- c("ENA_RUN","UCIE")
-write_delim(pcoa_isd_sites_ucie,"results/pcoa_isd_sites_ucie.tsv", delim="\t")
+#pcoa_isd_sites_ucie <- ucie::data2cielab(pcoa_isd_sites, LAB_coordinates = F)
+#colnames(pcoa_isd_sites_ucie) <- c("ENA_RUN","UCIE")
+#write_delim(pcoa_isd_sites_ucie,"results/pcoa_isd_sites_ucie.tsv", delim="\t")
 pcoa_isd_sites_ucie <- read_delim("results/pcoa_isd_sites_ucie.tsv")
 ############################### ucie with pcoa ########################
 #nmds_isd_taxa_ucie <- data2cielab(nmds_isd_taxa_k3, Wb=1.2, S=1.6)
@@ -374,9 +375,9 @@ ggsave("figures/map_crete_geology.png",
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 
-total_samples <- length(unique(genera_phyla_samples$ENA_RUN))
+total_samples <- length(unique(community_matrix_l$ENA_RUN))
 
-phyla_genera_samples_summary <- genera_phyla_samples %>%
+phyla_samples_summary <- community_matrix_l %>%
     group_by(ENA_RUN,Phylum) %>%
     summarise(asvs=sum(asvs),
               reads_srs_mean=mean(reads_srs_mean),
@@ -385,7 +386,7 @@ phyla_genera_samples_summary <- genera_phyla_samples %>%
     mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
     mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum))
     
-phyla_stats <- phyla_genera_samples_summary %>% 
+phyla_stats <- phyla_samples_summary %>% 
     group_by(Phylum) %>%
     summarise(n_samples=n(),
               total_asvs=sum(asvs),
@@ -395,7 +396,7 @@ phyla_stats <- phyla_genera_samples_summary %>%
     arrange(desc(average_relative))
 
 ################################# Heatmap ###############################
-phyla_samples_w_z <- phyla_genera_samples_summary %>%
+phyla_samples_w_z <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
                 values_from=z_srs,
@@ -403,7 +404,7 @@ phyla_samples_w_z <- phyla_genera_samples_summary %>%
     as.data.frame() %>% 
     column_to_rownames("ENA_RUN")
 
-phyla_samples_w <- phyla_genera_samples_summary %>%
+phyla_samples_w <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
                 values_from=reads_srs_sum,
