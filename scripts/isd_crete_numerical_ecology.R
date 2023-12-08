@@ -18,6 +18,7 @@
 ###############################################################################
 #library(mia)
 #library(phyloseq)
+source("scripts/functions.R")
 library(vegan)
 library(ape)
 library(dplyr)
@@ -28,8 +29,8 @@ library(tidyr)
 library(ggplot2)
 
 ################################## Load data ##################################
-genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
-biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
+crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
 
 # Metadata
 
@@ -42,16 +43,6 @@ metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
 
 ################################## functions ##################################
-dist_long <- function(x,method){
-    method <- method
-    df <- as.data.frame(as.matrix(x)) %>%
-    rownames_to_column() %>%
-    pivot_longer(-rowname,
-                 values_to=method,
-                 names_to="colname")
-
-    return(df)
-}
 
 ######
 ###
@@ -67,6 +58,7 @@ print("descriptors stats")
 pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
 pw_e <- pairwise.wilcox.test(metadata$S.obs, metadata$elevation_bin, p.adjust.method="BH")
 pw_s <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL1, p.adjust.method="BH")
+pw_2 <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL2, p.adjust.method="BH")
 print(pw)
 
 # correlations of diversity and other numerical metadata
@@ -86,6 +78,21 @@ write.table(cc_sp,
             sep="\t",
             row.names=T,
             col.names=NA)
+######################################community matrix##########################
+print("community matrix")
+community_matrix <- community_matrix_l %>%
+    dplyr::select(ENA_RUN,reads_srs_sum,scientificName) %>%
+    pivot_wider(names_from=scientificName,
+                values_from=reads_srs_sum,
+                values_fill=0) %>%
+    as.data.frame()
+
+write_delim(community_matrix,"results/community_matrix.tsv", delim="\t")
+
+rownames(community_matrix) <- community_matrix[,1]
+community_matrix <- community_matrix[,-1]
+
+taxa <- community_matrix_l %>% distinct(Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification)
 
 
 ############################## Dissimilarity ###########################
@@ -110,25 +117,8 @@ aitchison_l <- dist_long(aitchison, "robust.aitchison")
 ########################## Phylum level ########################
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
-#####################################################################
-############### genera as taxa in the community matrix################
-print("genera as community")
-genera_samples_m <- genera_phyla_samples %>%
-    dplyr::select(ENA_RUN,relative_srs,Genus) %>%
-    pivot_wider(names_from=Genus,
-                values_from=relative_srs,
-                values_fill=0) %>%
-    as.data.frame()
 
-write_delim(genera_samples_m,"results/genera_samples_matrix.tsv", delim="\t")
-
-community_matrix <- genera_samples_m
-rownames(community_matrix) <- community_matrix[,1]
-community_matrix <- community_matrix[,-1]
-
-genera_tax <- genera_phyla_samples %>% distinct(Phylum, Genus)
-
-#### Community matrix with genera
+#### Community matrix
 
 bray <- vegdist(community_matrix,
                 method="bray")

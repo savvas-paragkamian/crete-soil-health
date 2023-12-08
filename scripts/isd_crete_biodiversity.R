@@ -31,6 +31,7 @@
 ###############################################################################
 # usage:./scripts/isd_crete_biodiversity.R
 ###############################################################################
+source("scripts/functions.R")
 library(magrittr)
 library(dplyr)
 library(tibble)
@@ -39,20 +40,7 @@ library(tidyr)
 library(vegan)
 library(SRS) # normalisation
 #library(ANCOMBC)
-################################## functions ##################################
-# this function keeps the last occurrence of a string separated by |
-keep_last <- function(x) tail(strsplit(x, split="; ")[[1]],1)
 
-dist_long <- function(x,method){
-    method <- method
-    df <- as.data.frame(as.matrix(x)) %>%
-    rownames_to_column() %>%
-    pivot_longer(-rowname,
-                 values_to=method,
-                 names_to="colname")
-
-    return(df)
-}
 ################################## Load data ##################################
 # Load data old repo
 #abundance_asv_old <- readRDS("Crete/all_runs_dada2_abundance_table.rds")
@@ -160,8 +148,6 @@ rownames(crete_biodiversity_matrix) <- crete_biodiversity_m[,1]
 saveRDS(crete_biodiversity_matrix, "results/crete_biodiversity_matrix.RDS")
 print("master file created")
 
-
-
 # SRS compositional preparation
 print("compositionanlity with SRS method")
 
@@ -210,7 +196,7 @@ dim(biodiversity_srs)
 biodiversity_srs <- biodiversity_srs[-which(rowSums(biodiversity_srs)==0) ,]
 
 #### Save ######
-saveRDS(biodiversity_srs, "results/biodiversity_srs.RDS")
+#saveRDS(biodiversity_srs, "results/biodiversity_srs.RDS")
 #biodiversity_srs <- readRDS("results/biodiversity_srs.RDS")
 
 ### remove the asvs that don't have a taxonomy
@@ -222,6 +208,8 @@ crete_biodiversity <- crete_biodiversity_all %>%
     left_join(biodiversity_srs_l, by=c("asv_id"="rowname", "ENA_RUN"="colname"))
 
 write_delim(crete_biodiversity,"results/crete_biodiversity_asv.tsv",delim="\t")
+
+#crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 
 print("how many occurrences don't have srs abundace")
 nrow(crete_biodiversity[is.na(crete_biodiversity$srs_abundance),])
@@ -238,21 +226,29 @@ nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_
 print("how many occurrences with srs abundace and Species")
 nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_biodiversity$Species),])
 
+################################ Community Matrix ###########################################
+## here is the last filtering
+
+community_matrix_l <- crete_biodiversity %>%
+    filter(!is.na(srs_abundance), !is.na(Phylum)) %>%
+    group_by(ENA_RUN,Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification,taxonomy) %>%
+    summarise(asvs=n(),
+              reads_srs_mean=mean(srs_abundance),
+              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
+    ungroup()
+
+write_delim(community_matrix_l,"results/community_matrix_l.tsv",delim="\t")
+
 ################################ save Faprotax format ############################
-### all asvs
-biodiversity_srs_faprotax <- biodiversity_srs %>%
-    rownames_to_column("asv_id") %>% 
-    left_join(taxa_asv_all[,c("asv_id","taxonomy")], by=c("asv_id"="asv_id")) %>%
-    as_tibble()
+#### faprotax community matrix
 
-write_delim(biodiversity_srs_faprotax,
-            "results/faprotax_biodiversity_srs.tsv",
-            delim="\t")
-
-#### faprotax with genera and species
-faprotax_community_matrix <- crete_biodiversity %>%
-    filter(classification %in% c("Genus","Species"), !is.na(srs_abundance)) %>%
-    pivot_wider(id_cols=c(asv_id,taxonomy), names_from=ENA_RUN, values_from=srs_abundance, values_fill=0)
+faprotax_community_matrix <- community_matrix_l %>%
+    pivot_wider(id_cols=c(scientificName,taxonomy),
+                names_from=ENA_RUN,
+                values_from=reads_srs_sum, values_fill=0) %>%
+    relocate(taxonomy, .after = last_col())
 
 write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
 
@@ -376,6 +372,16 @@ crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_
 print("taxonomic summary")
 ## how the information of communities of Cretan soils is distributed across 
 ## the taxonomic levels
+
+taxonomy_taxa <- crete_biodiversity %>%
+    distinct(higherClassification,scientificName) %>%
+    group_by(higherClassification) %>% summarise(n_taxa=n())
+
+taxonomy_asv <- crete_biodiversity %>%
+    distinct(higherClassification,asv_id) %>%
+    group_by(higherClassification) %>%
+    summarise(n_asv=n())
+
 taxonomy_levels_occurrences <- crete_biodiversity %>%
     group_by(classification) %>%
     summarise(n_occurrences=n(),
