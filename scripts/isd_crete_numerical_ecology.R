@@ -32,6 +32,8 @@ library(ggplot2)
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
 
+community_matrix <- readRDS("results/community_matrix.RDS")
+
 # Metadata
 
 master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
@@ -42,11 +44,9 @@ metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
 master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
 
-################################## functions ##################################
-
 ######
 ###
-metadata <- metadata %>% filter(ENA_RUN %in% colnames(biodiversity_srs))
+metadata <- metadata %>% filter(ENA_RUN %in% rownames(community_matrix))
 
 ### 
 print("samples with highest values of physicochemical properties")
@@ -80,17 +80,6 @@ write.table(cc_sp,
             col.names=NA)
 ######################################community matrix##########################
 print("community matrix")
-community_matrix <- community_matrix_l %>%
-    dplyr::select(ENA_RUN,reads_srs_sum,scientificName) %>%
-    pivot_wider(names_from=scientificName,
-                values_from=reads_srs_sum,
-                values_fill=0) %>%
-    as.data.frame()
-
-write_delim(community_matrix,"results/community_matrix.tsv", delim="\t")
-
-rownames(community_matrix) <- community_matrix[,1]
-community_matrix <- community_matrix[,-1]
 
 taxa <- community_matrix_l %>% distinct(Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification)
 
@@ -98,21 +87,6 @@ taxa <- community_matrix_l %>% distinct(Kingdom,Phylum,Class,Order,Family,Genus,
 ############################## Dissimilarity ###########################
 # use the vegan package, the matrix must be transposed
 print("(dis)similarities")
-biodiversity_srs_t <- t(biodiversity_srs)
-
-bray <- vegdist(biodiversity_srs_t,
-                method="bray")
-
-jaccard <- vegdist(biodiversity_srs_t,
-                method="jaccard",
-                binary=TRUE)
-
-aitchison <- vegdist(biodiversity_srs_t,
-                method="robust.aitchison")
-
-bray_l <- dist_long(bray, "bray")
-jaccard_l <- dist_long(jaccard, "jaccard")
-aitchison_l <- dist_long(aitchison, "robust.aitchison")
 
 ########################## Phylum level ########################
 ## Phyla distribution, average relative abundance and ubiquity
@@ -148,6 +122,17 @@ bray_samples <- vegdist(community_matrix,method="bray")
 
 bray_l <- dist_long(bray, "bray")
 
+jaccard <- vegdist(community_matrix,
+                method="jaccard",
+                binary=TRUE)
+
+aitchison <- vegdist(community_matrix,
+                method="robust.aitchison")
+
+jaccard_l <- dist_long(jaccard, "jaccard")
+aitchison_l <- dist_long(aitchison, "robust.aitchison")
+
+# beta diversity
 z <- betadiver(community_matrix, "z")
 #mod <- with(metadata, betadisper(z, LABEL1))
 #sac <- specaccum(biodiversity_srs_t)
@@ -214,7 +199,7 @@ dev.off()
 
 nmds_isd_taxa <- as.data.frame(scores(nmds_isd, "species")) %>%
     rownames_to_column("scientificName") %>%
-    left_join(genera_tax, by=c("scientificName"="Genus"))
+    left_join(taxa, by=c("scientificName"="scientificName"))
 
 write_delim(nmds_isd_taxa,"results/nmds_isd_taxa.tsv", delim="\t")
 
