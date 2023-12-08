@@ -32,7 +32,7 @@ library(ucie)
 
 ################################## Load data ##################################
 ## biodiversity
-#crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
 genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
@@ -114,6 +114,43 @@ palette.colors(palette = "Okabe-Ito")
 cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darkorchid1", "goldenrod3", "palevioletred3", "peachpuff4", "turquoise","skyblue")
 
 print("printing base maps")
+
+crete_black <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_point(locations_spatial,
+            mapping=aes(x=longitude, y=latitude, color=UCIE),
+            size=8,
+            show.legend=F) +
+    geom_jitter(width = 0.25, height = 0.25)+
+    scale_color_manual(values=locations_spatial$UCIE, guide="none")+
+    coord_sf(crs="wgs84") +
+    theme_bw()+
+    theme(
+        panel.background = element_rect(fill='transparent'), #transparent panel bg
+        panel.border = element_blank(),
+        plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+        legend.background = element_rect(fill='transparent'), #transparent legend bg
+        legend.box.background = element_rect(fill='transparent'), #transparent legend panel
+        line = element_blank(),
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        legend.text=element_text(size=8),
+        legend.title = element_text(size=8),
+        legend.position = "bottom")
+
+
+ggsave("figures/map_crete_black.png",
+       plot=crete_black,
+       bg='transparent',
+       height = 30,
+       width = 60,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+
 crete_base <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
