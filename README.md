@@ -44,7 +44,7 @@ output:
 
 #### task : Analysis
 1. spatial data [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_spatial.R)
-2. biodiversity [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_biodiversity.R), UMAP ordination [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_umap.py) and FAPROTAX command `./collapse_table.py -i ../results/biodiversity_srs_faprotax.tsv -o ../results/faprotax_functional_table.tsv -g FAPROTAX.txt -d taxonomy --omit_columns 0 -r ../results/faprotax_report.txt -n columns_after_collapsing -v --collapse_by_metadata taxonomy --out_sub_tables_dir ../results/function_tables -v `
+2. biodiversity [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_biodiversity.R), UMAP ordination [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_umap.py) and FAPROTAX command `./collapse_table.py -i ../results/faprotax_community_matrix.tsv -o ../results/faprotax_functional_table.tsv -g FAPROTAX.txt -d taxonomy --omit_columns 0 -r ../results/faprotax_report.txt -n columns_after_collapsing -v --collapse_by_metadata taxonomy --out_sub_tables_dir ../results/function_tables -v `
 3. numerical ecology [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/isd_crete_numerical_ecology.R)
 5. figures [script](https://github.com/savvas-paragkamian/isd-crete/blob/main/scripts/figures.R)
 

@@ -93,8 +93,13 @@ echo "executing biodiversity script"
 echo "compositionality and differential abundance"
 #####./scripts/isd_crete_compositionality.R
 
+echo "executing FAPROTAX"
+cd FAPROTAX_1.2.7/
+.collapse_table.py -i ../results/faprotax_community_matrix.tsv -o ../results/faprotax_functional_table.tsv -g FAPROTAX.txt -d taxonomy --omit_columns 0 -r ../results/faprotax_report.txt -n columns_after_collapsing -v --collapse_by_metadata taxonomy --out_sub_tables_dir ../results/function_tables -v
+
 echo "executing numerical ecology script"
 
+cd $repository_path
 ./scripts/isd_crete_numerical_ecology.R
 
 echo "UMAP dimention reduction scripts"
