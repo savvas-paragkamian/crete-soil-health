@@ -15,6 +15,7 @@
 # OUTPUT:
 #
 # the main output of this script is 
+# 0. community_matrix_l.tsv
 # 1. crete_biodiversity_asv.tsv
 # which contains the sample - asv occurrences with abundance along with 
 # taxonomic information.
@@ -230,7 +231,9 @@ nrow(crete_biodiversity[!is.na(crete_biodiversity$srs_abundance) & !is.na(crete_
 ## here is the last filtering
 
 community_matrix_l <- crete_biodiversity %>%
-    filter(!is.na(srs_abundance), !is.na(Phylum)) %>%
+    filter(srs_abundance>0,
+           !is.na(srs_abundance),
+           !is.na(Phylum)) %>%
     group_by(ENA_RUN,Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification,taxonomy) %>%
     summarise(asvs=n(),
               reads_srs_mean=mean(srs_abundance),
@@ -240,6 +243,19 @@ community_matrix_l <- crete_biodiversity %>%
     ungroup()
 
 write_delim(community_matrix_l,"results/community_matrix_l.tsv",delim="\t")
+
+community_matrix <- community_matrix_l %>%
+    dplyr::select(ENA_RUN,reads_srs_sum,scientificName) %>%
+    pivot_wider(names_from=scientificName,
+                values_from=reads_srs_sum,
+                values_fill=0) %>%
+    as.data.frame()
+
+write_delim(community_matrix,"results/community_matrix.tsv", delim="\t")
+
+rownames(community_matrix) <- community_matrix[,1]
+community_matrix <- community_matrix[,-1]
+saveRDS(community_matrix, "results/community_matrix.RDS")
 
 ################################ save Faprotax format ############################
 #### faprotax community matrix
@@ -263,37 +279,25 @@ write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",de
 #rm(list=setdiff(ls(), variables_keep))
 
 ########################## Samples diversity #########################
-################################# Indices ###################################
 print("sample summary")
-# total ASV per sample
-samples_srs_asvs <- biodiversity_srs_l %>%
-    group_by(colname) %>%
-    filter(srs_abundance>0) %>%
-    summarise(n_srs_asv=n())
-
+################################# Indices ###################################
 # Explore alpha-metrics
-biodiversity_srs_t <- t(biodiversity_srs)
 
-shannon <- data.frame(shannon = as.matrix(diversity(biodiversity_srs_t, index = "shannon")))
-observed <- data.frame(t(estimateR(biodiversity_srs_t)))
+shannon <- data.frame(shannon = as.matrix(diversity(community_matrix, index = "shannon")))
+observed <- data.frame(t(estimateR(community_matrix)))
 
 biodiversity_index <- cbind(shannon,observed)
 
 biodiversity_index$ENA_RUN <- rownames(biodiversity_index)
 rownames(biodiversity_index) <- NULL
+biodiversity_index <- as.data.frame(biodiversity_index)
 ## taxonomic, asv and read diversity per sample
 
-sample_taxonomy_stats <- crete_biodiversity %>% 
-    group_by(ENA_RUN, classification, scientificName) %>% 
-    summarise(asvs=n(),
-              reads=sum(abundance),
-              reads_srs=sum(srs_abundance,na.rm=T),
-              .groups="keep") %>%
+sample_taxonomy_stats <- community_matrix_l %>% 
     group_by(ENA_RUN,classification) %>%
     summarise(taxa=n(),
-              reads=sum(reads),
               asvs=sum(asvs),
-              reads_srs=sum(reads_srs),
+              reads_srs=sum(reads_srs_sum),
               .groups="keep") %>%
 #    pivot_wider(names_from=classification,values_from=n_taxa) %>%
     dplyr::ungroup()
@@ -305,16 +309,24 @@ write_delim(sample_taxonomy_stats,
 sample_stats_total <- sample_taxonomy_stats %>%
     group_by(ENA_RUN) %>%
     summarise(taxa=sum(taxa),
-              reads=sum(reads),
-              asvs=sum(asvs),
+              asvs=sum(asvs),  # total ASV per sample
               reads_srs=sum(reads_srs))
+
+### highest species biodiversity sample
+
+crete_biodiversity_s <- community_matrix_l %>%
+    distinct(ENA_RUN, Species) %>% 
+    group_by(ENA_RUN) %>%
+    summarise(Species=n())
+
+print("sample with the highest microbial species diversity")
+crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
 ## keep only the sample metadata after filtering
 ## filter also metadata and taxonomy
 metadata_all <-  metadata %>%
     left_join(biodiversity_index, by=c("ENA_RUN"="ENA_RUN")) %>%
-    left_join(sample_stats_total, by=c("ENA_RUN"="ENA_RUN")) %>%
-    left_join(samples_srs_asvs, by=c("ENA_RUN"="colname"))
+    left_join(sample_stats_total, by=c("ENA_RUN"="ENA_RUN"))
 
 write_delim(metadata_all,
             "results/sample_metadata.tsv",
@@ -357,15 +369,6 @@ asv_sample_dist <- asv_stats %>%
               reads=sum(reads),
               reads_srs=sum(reads_srs, na.rm=T))
 
-### highest species biodiversity sample
-
-crete_biodiversity_s <- crete_biodiversity %>%
-    distinct(ENA_RUN, Species) %>% 
-    group_by(ENA_RUN) %>%
-    summarise(Species=n())
-
-print("sample with the highest microbial species diversity")
-crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
 ################################# Taxonomy #####################################
 
@@ -373,58 +376,51 @@ print("taxonomic summary")
 ## how the information of communities of Cretan soils is distributed across 
 ## the taxonomic levels
 
-taxonomy_taxa <- crete_biodiversity %>%
+taxonomy_taxa <- community_matrix_l %>%
     distinct(higherClassification,scientificName) %>%
     group_by(higherClassification) %>% summarise(n_taxa=n())
 
-taxonomy_asv <- crete_biodiversity %>%
-    distinct(higherClassification,asv_id) %>%
-    group_by(higherClassification) %>%
-    summarise(n_asv=n())
-
-taxonomy_levels_occurrences <- crete_biodiversity %>%
+taxonomy_levels_occurrences <- community_matrix_l %>%
     group_by(classification) %>%
     summarise(n_occurrences=n(),
-              reads=sum(abundance, na.rm=T),
-              reads_srs=sum(srs_abundance, na.rm=T),
-              asvs=length(unique(asv_id)))
+              reads_srs=sum(reads_srs_sum, na.rm=T),
+              asvs=sum(asvs))
 
 write_delim(taxonomy_levels_occurrences,"results/taxonomy_levels_occurrences.tsv",delim="\t")
 ## Phyla distribution, average relative abundance and ubiquity
 
-phyla_samples_summary <- crete_biodiversity %>%
-    filter(!is.na(srs_abundance), !is.na(Phylum), srs_abundance > 0) %>%
+phyla_samples_summary <- community_matrix_l %>%
     group_by(ENA_RUN,Phylum) %>%
-    summarise(asvs=n(),
-              reads_srs_mean=mean(srs_abundance),
-              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    summarise(asvs=sum(asvs),
+              abundance_mean=mean(reads_srs_sum),
+              abundance_sum=sum(reads_srs_sum), .groups="keep") %>%
     group_by(ENA_RUN) %>%
-    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum))
+    mutate(relative_abundance=abundance_sum/sum(abundance_sum))
 #    na.omit(Phylum)
 
 write_delim(phyla_samples_summary,"results/phyla_samples_summary.tsv",delim="\t")
 
 ## phyla stats
-total_samples <- length(unique(metadata$ENA_RUN))
+total_samples <- length(unique(community_matrix_l$ENA_RUN))
 phyla_stats <- phyla_samples_summary %>% 
     group_by(Phylum) %>%
     summarise(n_samples=n(),
               total_asvs=sum(asvs),
-              total_reads_srs=sum(reads_srs_sum),
+              total_abundance=sum(abundance_sum),
               proportion_sample=n_samples/total_samples,
-              average_relative=mean(relative_srs)) %>%
+              average_relative=mean(relative_abundance)) %>%
     arrange(desc(average_relative))
 
 write_delim(phyla_stats,"results/phyla_stats.tsv",delim="\t")
 
 ## Genera stats
 
-genera_phyla_samples <- crete_biodiversity %>%
-    filter(!is.na(srs_abundance), !is.na(Phylum),!is.na(Genus)) %>%
+genera_phyla_samples <- community_matrix_l %>%
+    filter(!is.na(Genus)) %>%
     group_by(Phylum,Genus,ENA_RUN) %>%
-    summarise(asvs=n(),
-              reads_srs_mean=mean(srs_abundance),
-              reads_srs_sum=sum(srs_abundance), .groups="keep") %>%
+    summarise(asvs=sum(asvs),
+              reads_srs_mean=mean(reads_srs_sum),
+              reads_srs_sum=sum(reads_srs_sum), .groups="keep") %>%
     group_by(ENA_RUN) %>%
     mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
     ungroup()
@@ -448,10 +444,9 @@ write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
 
 ################################ save network format ############################
 
-network_genera_community_matrix <- genera_phyla_samples %>%
-    filter(reads_srs_sum>0, !is.na(reads_srs_sum)) %>%
+network_genera_community_matrix <- community_matrix_l %>%
     pivot_wider(id_cols=c(ENA_RUN),
-                names_from=Genus,
+                names_from=scientificName,
                 values_from=reads_srs_sum,
                 values_fill=0) %>%
     column_to_rownames("ENA_RUN")
