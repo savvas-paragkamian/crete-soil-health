@@ -113,6 +113,10 @@ A companion one-liner that contains the sequences of asvs and their created ids.
 ```
 gawk -F"\t" 'BEGIN{print "asv_id" "\t" "asv"}(NR==1){split($0,asv,"\t"); for (i in asv){print "asv"i "\t" asv[i]}}' seqtab_nochim.tsv > asv_fasta_ids.tsv
 ```
+Transform to fasta format
+```
+gawk -F"\t" '(NR>1){gsub(/"/,"",$2); print ">"$1 "\n" $2}' asv_fasta_ids.tsv > asv_fasta_ids.fasta
+```
 
 ## Metadata
 

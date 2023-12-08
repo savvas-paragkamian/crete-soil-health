@@ -16,7 +16,13 @@ module purge # unloads all previous loads
 
 module load singularity/3.7.1 #loads singularity
 
-singularity run -B /home1/s.paragkamian/isd-crete/pema_asv/:/mnt/analysis /mnt/big/containers/singularity/pema_v.2.1.4.sif
+#singularity run -B /home1/s.paragkamian/isd-crete/pema_test_asv/:/mnt/analysis /mnt/big/containers/singularity/pema_v.2.1.4.sif
+
+### for checkpoints
+singularity exec \
+    -B /home1/s.paragkamian/isd-crete/pema_asv/:/mnt/analysis \
+    /mnt/big/containers/singularity/pema_v.2.1.4.sif \
+    /home/tools/BDS/.bds/bds -r /mnt/analysis/clustering.chp
 
 module unload singularity/3.7.1 #unloads singularity
 
