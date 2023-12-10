@@ -108,6 +108,12 @@ locations_spatial <- locations_spatial %>%
     left_join(pcoa_isd_sites_ucie,by=c("ENA_RUN"="ENA_RUN"))
 
 locations_spatial$UCIE[is.na(locations_spatial$UCIE)] <- "gray" 
+############################### Color palettes ##################################
+n_categories <- length(unique(clc_crete_shp$LABEL2))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+colors_clc_label2 <- colorRampPalette(okabe_ito_colors)(n_categories)
+
+
 ##################################### MAPS #####################################
 # Colorblind palette
 palette.colors(palette = "Okabe-Ito")
@@ -116,18 +122,18 @@ cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darko
 
 print("printing base maps")
 
-crete_black <- ggplot() +
+crete_blank <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_point(locations_spatial,
             mapping=aes(x=longitude, y=latitude, color=UCIE),
-            size=8,
+            size=6,
             show.legend=F) +
     geom_jitter(width = 0.25, height = 0.25)+
     scale_color_manual(values=locations_spatial$UCIE, guide="none")+
     coord_sf(crs="wgs84") +
     theme_bw()+
     theme(
-        panel.background = element_rect(fill='transparent'), #transparent panel bg
+#        panel.background = element_rect(fill='transparent'), #transparent panel bg
         panel.border = element_blank(),
         plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
         panel.grid.major = element_blank(), #remove major gridlines
@@ -142,8 +148,8 @@ crete_black <- ggplot() +
         legend.position = "bottom")
 
 
-ggsave("figures/map_crete_black.png",
-       plot=crete_black,
+ggsave("figures/map_crete_blank.png",
+       plot=crete_blank,
        bg='transparent',
        height = 30,
        width = 60,
@@ -155,24 +161,24 @@ ggsave("figures/map_crete_black.png",
 crete_base <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
-    geom_point(locations_spatial,
-            mapping=aes(x=longitude, y=latitude, color=UCIE, shape=as.character(route)),
-            size=1.7,
-            alpha=0.6,
-            show.legend=T) +
-    geom_jitter(width = 0.25, height = 0.25)+
+#    geom_point(locations_spatial,
+#            mapping=aes(x=longitude, y=latitude, color=UCIE, shape=as.character(route)),
+#            size=1.7,
+#            alpha=0.6,
+#            show.legend=T) +
+#    geom_jitter(width = 0.25, height = 0.25)+
 #    geom_sf(crete_peaks,
 #            mapping=aes(),
-#            colour=na,
+#            colour=NA,
 #            size=1,
 #            alpha=1,
-#            show.legend=f) +
-#    geom_label(data = crete_peaks,
-#               mapping=aes(x = X, y = Y, label = name),
-#               size = 1.8,
+#            show.legend=FALSE) +
+    geom_label(data = crete_peaks,
+               mapping=aes(x = X, y = Y, label = name),
+               size = 2,
 #               nudge_x = 0.07,
 #               nudge_y=0.07,
-#               label.padding = unit(0.1, "lines"))+
+               label.padding = unit(0.1, "lines"))+
     scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
                                   title="elevation",
                                   direction = "vertical",
@@ -180,15 +186,21 @@ crete_base <- ggplot() +
                         colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
                         breaks = c(100, 800, 1500, 2400),
                         labels = c(100, 800, 1500, 2400))+
-    scale_color_manual(values=locations_spatial$UCIE, guide="none")+
-    scale_shape_manual(values=c(seq(0,9,1)),name="route")+
+#    scale_color_manual(values=locations_spatial$UCIE, guide="none")+
+#    scale_shape_manual(values=c(seq(0,9,1)),name="route")+
     coord_sf(crs="wgs84") +
     theme_bw()+
     theme(axis.title=element_blank(),
-          axis.text=element_text(colour="black"),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
           legend.text=element_text(size=8),
           legend.title = element_text(size=8),
-          legend.position = "bottom",
+          legend.position = c(0.95,0.8),
           legend.box.background = element_blank())
 
 
@@ -210,49 +222,49 @@ ggsave("figures/map_fig1a.png",
 
 ## Crete Corine
 
+colors_clc_label2_v <- c("Artificial, non-agricultural vegetated areas"="#000000",
+"Open spaces with little or no vegetation"="#A77300",
+"Pastures"="#98BA6A",
+"Mine, dump and construction sites"="#46B0D3",
+"Forests"="#07A07D",
+"Scrub and/or herbaceous vegetation associations"="#98CA53",
+"Urban fabric" ="#A4A869",
+"Inland waters"="#1370A1",
+"Permanent crops"="#AE6120",
+"Industrial, commercial and transport units"="#D06C5B",
+"Heterogeneous agricultural areas"="#BE81A3",
+"Arable land"="#999999")
+
 crete_corine <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_sf(clc_crete_shp,
-            mapping=aes(fill=LABEL1),
+            mapping=aes(fill=LABEL2),
             alpha=1,
             colour="transparent",
             show.legend=T) +
-    geom_sf(natura_crete_land_sci,
-            mapping=aes(color="Natura2000 HSD"),
-            linewidth=0.6,
-            fill=NA,
-            alpha=1,
-            show.legend=T) +
-#    geom_sf(crete_peaks,
-#            mapping=aes(),
-#            color = "#D55E00",
-#            size=1,
-#            alpha=1,
-#            show.legend=F) +
-#    geom_label(data = crete_peaks, 
-#               mapping=aes(x = X, y = Y, label = name),
-#               size = 1.5,
-#               nudge_x = 0.05,
-#               nudge_y=0.05, label.padding = unit(0.1, "lines"))+ 
-    scale_fill_manual(values = c("Artificial surfaces"="#000000",
-                                 "Agricultural areas"="#E69F00",
-                                 "Forest and semi natural areas" = "#009E73",
-                                 "Water bodies" = "#0072B2",
-                                 "Natura2000 HSD"=NA),
+    scale_fill_manual(values = colors_clc_label2_v,#c("Artificial surfaces"="#000000",
+                                # "Agricultural areas"="#E69F00",
+                                # "Forest and semi natural areas" = "#009E73",
+                                # "Water bodies" = "#0072B2",
+                                # "Natura2000 HSD"=NA),
                       guide = "legend") +
-    scale_colour_manual(values = c("Natura2000 HSD" = "#56B4E9"),
-                        guide = "legend") +
-    guides(fill = guide_legend(override.aes = list(color = "transparent", alpha=1) ),
+    guides(fill = guide_legend(nrow=3,byrow=TRUE, override.aes = list(color = "transparent", alpha=1) ),
            colour = guide_legend(override.aes = list(alpha=1, fill="transparent") ) )+
     coord_sf(crs="WGS84") +
     theme_bw()+
     theme(axis.title=element_blank(),
-          axis.text=element_text(colour="black"),
-          legend.title = element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_text(size=5),
           legend.position = "bottom",
-          legend.box.background = element_blank(),
-          legend.key.size = unit(8, "mm"), 
-          legend.text=element_text(size=8))
+          legend.box.background = element_blank())
+
 
 ggsave("figures/map_fig1b.tiff", 
        plot=crete_corine, 
@@ -271,26 +283,25 @@ ggsave("figures/map_fig1b.png",
        device="png")
 
 
-fig1 <- ggarrange(crete_base,crete_corine,
-          labels = c("A", "B"),
+fig1 <- ggarrange(crete_blank,crete_base,crete_corine,
+          labels = c("A", "B", "C"),
           align = "hv",
-          widths = c(1,0.6),
+          heights = c(0.75,0.8,1),
           ncol = 1,
-          nrow = 2,
-          font.label=list(color="black",size=22),
-          legend="bottom") + bgcolor("white")
+          nrow = 3,
+          font.label=list(color="black",size=22)) + bgcolor("white")
 
 ggsave("figures/map_fig1.tiff", 
        plot=fig1, 
-       height = 30, 
+       height = 40, 
        width = 30,
        dpi = 300, 
        units="cm",
        device="tiff")
 
 ggsave("figures/map_fig1.png", 
-       lot=fig1, 
-       height = 30, 
+       plot=fig1, 
+       height = 40, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -298,7 +309,7 @@ ggsave("figures/map_fig1.png",
 
 ggsave("figures/map_fig1.pdf", 
        plot=fig1, 
-       height = 30, 
+       height = 40, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -306,7 +317,7 @@ ggsave("figures/map_fig1.pdf",
 
 ggsave("figures/map_fig1-small.png", 
        plot=fig1, 
-       height = 30, 
+       height = 40, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -496,16 +507,14 @@ ggsave("figures/taxonomy_representative_phyla_box.png",
        units="cm")
 
 ### all phyla boxplot
-n_categories <- length(unique(top_phyla$LABEL2))
-okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
-colors <- colorRampPalette(okabe_ito_colors)(n_categories)
+colors_label2 <- colors_clc_label2_v[names(colors_clc_label2_v) %in% unique(metadata$LABEL2)]
 
 phyla_box <- ggplot(top_phyla,
                     mapping=aes(x=relative_srs, y=Phylum))+
     geom_boxplot(outlier.shape = NA)+
-    geom_jitter(height = 0.1,width = 0.0001, stat="identity",alpha=0.5, aes(color=LABEL2))+
+    geom_jitter(height = 0.1,width = 0.0001, stat="identity",alpha=0.9, aes(color=LABEL2))+
     scale_x_continuous(breaks=seq(0,0.5,0.1))+
-    scale_color_manual(values=colors)+
+    scale_color_manual(values=colors_label2)+
     xlab("Relative adundance")+
     theme_bw()+
     theme(legend.position = c(0.75,0.2),
