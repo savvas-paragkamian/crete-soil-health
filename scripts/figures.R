@@ -385,7 +385,8 @@ phyla_samples_summary <- community_matrix_l %>%
               reads_srs_sum=sum(reads_srs_sum), .groups="keep") %>%
     group_by(ENA_RUN) %>%
     mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
-    mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum))
+    mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum)) %>%
+    left_join(dplyr::select(metadata, ENA_RUN, LABEL1, LABEL2,LABEL3, elevation, elevation_bin), by=c("ENA_RUN"="ENA_RUN"))
     
 phyla_stats <- phyla_samples_summary %>% 
     group_by(Phylum) %>%
@@ -426,7 +427,118 @@ ggsave("figures/taxonomy_phyla_ratios_samples.png",
        width = 38,
        units="cm")
 
-################################# Heatmap ###############################
+
+# top phyla ratios
+top_phyla <- phyla_samples_summary |> 
+    ungroup() |>
+    mutate(topPhyla=if_else(relative_srs < 0.05, "Other",Phylum)) |> 
+    mutate(Phylum=fct_reorder(Phylum, relative_srs)) |>
+    ungroup()
+
+top_phyla_names <- unique(top_phyla$topPhyla)
+
+n_top_phyla <- length(unique(top_phyla$topPhyla))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+fill_colors <- colorRampPalette(okabe_ito_colors)(n_top_phyla)
+
+phyla_ratios_top <- ggplot() + 
+    geom_col(top_phyla, mapping=aes(x=ENA_RUN,
+                                                y=relative_srs,
+                                                fill=topPhyla)) +
+    scale_fill_manual(values=fill_colors) +
+    theme_bw()+
+    coord_flip()+
+    scale_y_continuous(expand = c(0, 0), name="")+
+    theme(axis.text.x = element_text(face="bold",
+                                     size = 15),
+          axis.ticks.y=element_blank(),axis.title=element_blank(),
+          axis.text.y=element_text(size=10, hjust=0, vjust=0)) +
+    theme(legend.position="bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(), #remove major gridlines
+            panel.grid.minor = element_blank())+
+    guides(fill=guide_legend(nrow=1,
+                             byrow=TRUE,
+                             reverse=TRUE))
+
+ggsave("figures/taxonomy_top_phyla_ratios_samples.png",
+       plot=phyla_ratios_top,
+       device="png",
+       height = 55,
+       width = 38,
+       units="cm")
+
+############# Representative phyla of Cretan soils ########################
+
+### representative phyla boxplot
+representative_phyla <- top_phyla |> 
+    filter(Phylum %in% unique(top_phyla$topPhyla))
+
+representative_phyla_box <- ggplot(representative_phyla,
+                                   mapping=aes(x=relative_srs,
+                                               y=Phylum))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(height = 0.1,width = 0.0001, stat="identity",aes(alpha=0.5), color="gray50")+
+    scale_x_continuous(breaks=seq(0,0.5,0.1))+
+    xlab("Relative adundance")+
+    theme_bw()+
+    theme(legend.position = "none",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+
+ggsave("figures/taxonomy_representative_phyla_box.png",
+       plot=representative_phyla_box,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+### all phyla boxplot
+n_categories <- length(unique(top_phyla$LABEL2))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+colors <- colorRampPalette(okabe_ito_colors)(n_categories)
+
+phyla_box <- ggplot(top_phyla,
+                    mapping=aes(x=relative_srs, y=Phylum))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(height = 0.1,width = 0.0001, stat="identity",alpha=0.5, aes(color=LABEL2))+
+    scale_x_continuous(breaks=seq(0,0.5,0.1))+
+    scale_color_manual(values=colors)+
+    xlab("Relative adundance")+
+    theme_bw()+
+    theme(legend.position = c(0.75,0.2),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+ggsave("figures/taxonomy_phyla_box.png",
+       plot=phyla_box,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+### representative phyla samples
+representative_phyla_samples <- ggplot(phyla_stats,
+       aes(x = proportion_sample, y = reorder(Phylum, proportion_sample))) +
+  geom_point(size = 2) +  # Use a larger dot
+  theme_bw() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
+  )
+
+ggsave("figures/taxonomy_representative_phyla_samples.png",
+       plot=representative_phyla_samples,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+############################ Heatmap Phyla Samples ############################
 phyla_samples_w_z <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
@@ -458,44 +570,6 @@ pheatmap(t(phyla_samples_w_z),
          color=colorRampPalette(c("white", "skyblue", "palevioletred3"))(20))
 
 dev.off()
-
-############# Representative phyla of Cretan soils ########################
-
-representative_phyla_rel <- ggplot(phyla_stats,
-       aes(x = average_relative, y = reorder(Phylum, average_relative))) +
-  geom_point(size = 2) +  # Use a larger dot
-  scale_x_log10(labels = label_log()) +
-#  scale_x_continuous()+
-  theme_bw() +
-  theme(
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
-  )
-
-ggsave("figures/taxonomy_representative_phyla_rel.png",
-       plot=representative_phyla_rel,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-representative_phyla_samples <- ggplot(phyla_stats,
-       aes(x = proportion_sample, y = reorder(Phylum, proportion_sample))) +
-  geom_point(size = 2) +  # Use a larger dot
-  theme_bw() +
-  theme(
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
-  )
-
-ggsave("figures/taxonomy_representative_phyla_samples.png",
-       plot=representative_phyla_samples,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
 
 ################################ Phyla and genera  #########################
 
