@@ -9,6 +9,7 @@
 *.tsv
 *.xlsx
 *.pdf
-plots/
+*.tiff
+figures/
 data/
 results/
