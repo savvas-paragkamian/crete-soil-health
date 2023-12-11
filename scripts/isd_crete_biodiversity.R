@@ -437,7 +437,8 @@ write_delim(genera_phyla_samples,"results/genera_phyla_samples.tsv",delim="\t")
 genera_phyla_stats <- genera_phyla_samples %>%
     group_by(Phylum,Genus) %>%
     summarise(n_samples=n(),
-              average_relative=mean(relative_srs), 
+              relative_abundance_mean=mean(relative_srs), 
+              relative_abundance_sd=sd(relative_srs), 
               total_asvs=sum(asvs),
               reads_srs_mean=mean(reads_srs_sum),
               reads_srs_sd=sd(reads_srs_sum),
@@ -445,7 +446,7 @@ genera_phyla_stats <- genera_phyla_samples %>%
               proportion_sample=n_samples/total_samples, .groups="keep") %>%
     group_by(Phylum) %>%
     mutate(n_genera=n()) %>%
-    arrange(desc(n_samples))
+    arrange(desc(n_samples), desc(relative_abundance_mean))
 
 write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
 
