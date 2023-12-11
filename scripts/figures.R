@@ -35,7 +35,6 @@ library(ucie)
 community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
-genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv",delim="\t")
 genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
 
 # Metadata
@@ -583,22 +582,6 @@ dev.off()
 ################################ Phyla and genera  #########################
 
 
-phyla_genera_bar <- ggplot(genera_phyla_stats, mapping=aes(x=Phylum, y=average_relative,fill=Genus)) +
-    geom_col(position="stack") +
-    coord_flip()+
-    theme_bw()+
-    theme(legend.position="none")
-
-
-ggsave("figures/taxonomy_genera_phyla_stats.png",
-       plot=phyla_genera_bar,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-
-
 ########################### Generalists and specialists ##################
 ## Abundance (y axis) and occupancy (x axis) plot
 ## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
@@ -660,12 +643,23 @@ ggsave("figures/taxonomy_asv_generalists_cla.png",
        units="cm")
 
 ############################## genera ####################
+genera_phyla_samples <- community_matrix_l %>%
+    filter(!is.na(Genus)) %>%
+    group_by(Phylum,Genus,ENA_RUN) %>%
+    summarise(asvs=sum(asvs),
+              reads_srs_mean=mean(reads_srs_sum),
+              reads_srs_sum=sum(reads_srs_sum), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
+    ungroup()
+
+
 
 genera_stat_sample <- ggplot() +
     geom_point(genera_phyla_stats,
                mapping=aes(x=proportion_sample,
-                           y=reads_srs_mean,
-                           color=Phylum, size=average_relative)) +
+                           y=average_relative,
+                           color=Phylum)) +
 #    geom_errorbar(genera_phyla_stats,
 #                  mapping=aes(x=n_samples,
 #                              y=reads_srs_mean,
@@ -816,6 +810,7 @@ metadata_abiotic <- metadata %>%
                         total_nitrogen,
                         water_content,
                         total_organic_carbon,
+                        carbon_nitrogen_ratio,
                         sample_volume_or_weight_for_DNA_extraction,
                         DNA_concentration),
                  names_to="abiotic_metadata",
@@ -839,6 +834,7 @@ vars <- c("latitude",
           "elevation",
           "total_nitrogen",
           "water_content",
+          "carbon_nitrogen_ratio",
           "total_organic_carbon",
           "sample_volume_or_weight_for_DNA_extraction",
           "DNA_concentration",
@@ -862,6 +858,7 @@ for (var in vars){
 abiotic <- c("total_nitrogen",
              "water_content",
              "total_organic_carbon",
+             "carbon_nitrogen_ratio",
              "sample_volume_or_weight_for_DNA_extraction",
              "DNA_concentration")
 
