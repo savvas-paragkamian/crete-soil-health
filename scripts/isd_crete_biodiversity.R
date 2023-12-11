@@ -61,6 +61,13 @@ metadata <- read_delim("results/metadata_spatial.tsv", delim="\t")
 metadata$sites <- gsub("_loc_*.","", metadata$source_material_identifiers)
 metadata$location <- gsub(".*(loc_.*)","\\1", metadata$source_material_identifiers)
 
+## C:N ratio
+## Six samples have 0 total_nitrogen. So to avoid the inf 
+## use the if else statement.
+metadata$carbon_nitrogen_ratio <- ifelse(metadata$total_nitrogen==0,
+                                         metadata$total_organic_carbon,
+                                         metadata$total_organic_carbon/metadata$total_nitrogen)
+
 ########################## transform the matrices to long tables ##########################
 
 print("transforming data")
