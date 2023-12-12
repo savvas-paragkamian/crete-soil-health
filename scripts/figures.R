@@ -477,7 +477,7 @@ taxa_ratios_bar <- ggplot() +
             panel.border = element_blank(),
             panel.grid.major = element_blank(), #remove major gridlines
             panel.grid.minor = element_blank())+
-    guides(fill=guide_legend(nrow=7,byrow=TRUE))
+    guides(fill=guide_legend(nrow=1,byrow=TRUE))
 
 ggsave("figures/taxonomy_ratios_taxa_samples.png",
        plot=taxa_ratios_bar,
@@ -618,7 +618,8 @@ phyla_samples_w_z <- phyla_samples_summary %>%
     column_to_rownames("ENA_RUN")
 
 phyla_samples_w <- phyla_samples_summary |>
-    mutate(log_srs=log(reads_srs_mean)) |>
+    filter(reads_srs_sum>1) |>
+    mutate(log_srs=log(reads_srs_sum)) |>
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
                 values_from=log_srs,
@@ -638,7 +639,7 @@ png("figures/taxonomy_distribution_heatmap_phyla_samples.png",
 pheatmap(t(phyla_samples_w),
          clustering_distance_rows = drows,
          clustering_distance_cols = dcols,
-         color=colorRampPalette(c("white","skyblue", "palevioletred3"))(30))
+         color=colorRampPalette(c("white","skyblue", "palevioletred3"))(20))
 
 dev.off()
 
@@ -962,6 +963,9 @@ for (cat in cats){
     # bioclimatic variables boxplots
     diversity_boxplot(metadata_bioclim, cat, "value", "bioclim_metadata")
 }
+
+###################### Sample similarity ############################
+sample_cooccur_l<- read_delim("results/sample_cooccur_l.tsv", delim="\t")
 
 ######################### Ordination ############################
 ######### plots sites ###########
