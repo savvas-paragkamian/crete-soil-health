@@ -113,7 +113,7 @@ okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")
 colors_clc_label2 <- colorRampPalette(okabe_ito_colors)(n_categories)
 
 
-##################################### MAPS #####################################
+##################################### 1. MAPS #####################################
 # Colorblind palette
 palette.colors(palette = "Okabe-Ito")
 # Crete figures
@@ -401,7 +401,7 @@ ggsave("figures/map_crete_geology.png",
        units="cm",
        device="png")
 
-################################# Taxonomy #####################################
+################################# 2. Taxonomy #####################################
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 #phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
@@ -447,6 +447,43 @@ ggsave("figures/taxonomy_distribution_phyla_samples.png",
        device="png",
        height = 20,
        width = 23,
+       units="cm")
+#####
+taxa_samples_summary <- community_matrix_l %>%
+    group_by(ENA_RUN,scientificName, classification) %>%
+    summarise(asvs=sum(asvs),
+              reads_srs_mean=mean(reads_srs_mean),
+              reads_srs_sum=sum(reads_srs_sum), .groups="keep") %>%
+    group_by(ENA_RUN) %>%
+    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum))
+
+n_taxa <- length(unique(taxa_samples_summary$classification))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+fill_colors <- colorRampPalette(okabe_ito_colors)(n_taxa)
+
+taxa_ratios_bar <- ggplot() + 
+    geom_col(taxa_samples_summary, mapping=aes(x=ENA_RUN,
+                                                y=relative_srs,
+                                                fill=classification)) +
+    scale_fill_manual(values=fill_colors) +
+    theme_bw()+
+    coord_flip()+
+    scale_y_continuous(expand = c(0, 0), name="")+
+    theme(axis.text.x = element_text(face="bold",
+                                     size = 15),
+          axis.ticks.y=element_blank(),axis.title=element_blank(),
+          axis.text.y=element_text(size=10, hjust=0, vjust=0)) +
+    theme(legend.position="bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(), #remove major gridlines
+            panel.grid.minor = element_blank())+
+    guides(fill=guide_legend(nrow=7,byrow=TRUE))
+
+ggsave("figures/taxonomy_ratios_taxa_samples.png",
+       plot=taxa_ratios_bar,
+       device="png",
+       height = 55,
+       width = 38,
        units="cm")
 
 ############################### phyla ratios matter ###########################
@@ -580,12 +617,13 @@ phyla_samples_w_z <- phyla_samples_summary %>%
     as.data.frame() %>% 
     column_to_rownames("ENA_RUN")
 
-phyla_samples_w <- phyla_samples_summary %>%
+phyla_samples_w <- phyla_samples_summary |>
+    mutate(log_srs=log(reads_srs_mean)) |>
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
-                values_from=relative_srs,
-                values_fill=0) %>%
-    as.data.frame() %>%
+                values_from=log_srs,
+                values_fill=0) |>
+    as.data.frame() |>
     column_to_rownames("ENA_RUN")
 
 dcols = vegdist(phyla_samples_w, method="bray")
@@ -597,10 +635,10 @@ png("figures/taxonomy_distribution_heatmap_phyla_samples.png",
     height=30,
     unit="cm")
 
-pheatmap(t(phyla_samples_w_z),
+pheatmap(t(phyla_samples_w),
          clustering_distance_rows = drows,
          clustering_distance_cols = dcols,
-         color=colorRampPalette(c("white", "skyblue", "palevioletred3"))(20))
+         color=colorRampPalette(c("white","skyblue", "palevioletred3"))(30))
 
 dev.off()
 
@@ -824,6 +862,7 @@ for (taxon in taxa_specialists$scientificName){
            units="cm",
            device="png")
 }
+##################### Community ecology #########################
 ##################### Sample Diversity boxplots #########################
 # Metadata to long format for diversity indices
 metadata_diversity <- metadata %>%
@@ -1221,7 +1260,6 @@ for (fun in faprotax_functions){
 #    column_to_rownames("ENA_RUN")
 
 
-######################## Community ################################
 
 
 
