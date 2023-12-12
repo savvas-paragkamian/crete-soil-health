@@ -120,6 +120,26 @@ palette.colors(palette = "Okabe-Ito")
 cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darkorchid1", "goldenrod3", "palevioletred3", "peachpuff4", "turquoise","skyblue")
 
 print("printing base maps")
+crete_dem <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
+    scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
+                                  title="elevation",
+                                  direction = "vertical",
+                                  title.vjust = 0.8),
+                        colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
+                        breaks = c(100, 800, 1500, 2400),
+                        labels = c(100, 800, 1500, 2400))+
+    coord_sf(crs="wgs84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=8),
+          legend.title = element_text(size=8))
 
 crete_blank <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
@@ -405,7 +425,29 @@ phyla_stats <- phyla_samples_summary %>%
               total_reads_srs=sum(reads_srs_sum),
               proportion_sample=n_samples/total_samples,
               average_relative=mean(relative_srs)) %>%
-    arrange(desc(average_relative))
+    arrange(desc(average_relative)) |>
+    mutate(Phylum=fct_reorder(Phylum,proportion_sample, .desc=T))
+
+### distribution phyla samples
+distribution_phyla_samples <- ggplot(phyla_stats,
+       aes(x = proportion_sample, y = Phylum)) +
+  geom_point(size = 2) +  # Use a larger dot
+  scale_y_discrete(limits=rev) +
+  xlab("Samples proportion")+
+  ylab("Phylum")+
+  theme_bw() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
+  )
+
+ggsave("figures/taxonomy_distribution_phyla_samples.png",
+       plot=distribution_phyla_samples,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
 
 ############################### phyla ratios matter ###########################
 n_phyla <- length(unique(phyla_samples_summary$Phylum))
@@ -430,7 +472,7 @@ phyla_ratios_bar <- ggplot() +
             panel.grid.minor = element_blank())+
     guides(fill=guide_legend(nrow=7,byrow=TRUE))
 
-ggsave("figures/taxonomy_phyla_ratios_samples.png",
+ggsave("figures/taxonomy_ratios_phyla_samples.png",
        plot=phyla_ratios_bar,
        device="png",
        height = 55,
@@ -471,7 +513,7 @@ phyla_ratios_top <- ggplot() +
                              byrow=TRUE,
                              reverse=TRUE))
 
-ggsave("figures/taxonomy_top_phyla_ratios_samples.png",
+ggsave("figures/taxonomy_ratios_top_phyla_samples.png",
        plot=phyla_ratios_top,
        device="png",
        height = 55,
@@ -490,7 +532,7 @@ representative_phyla_box <- ggplot(representative_phyla,
     geom_boxplot(outlier.shape = NA)+
     geom_jitter(height = 0.1,width = 0.0001, stat="identity",aes(alpha=0.5), color="gray50")+
     scale_x_continuous(breaks=seq(0,0.5,0.1))+
-    xlab("Relative adundance")+
+    xlab("Relative abundance")+
     theme_bw()+
     theme(legend.position = "none",
           panel.grid.major.x = element_blank(),
@@ -498,7 +540,7 @@ representative_phyla_box <- ggplot(representative_phyla,
           panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
 
 
-ggsave("figures/taxonomy_representative_phyla_box.png",
+ggsave("figures/taxonomy_representative_top_phyla_box.png",
        plot=representative_phyla_box,
        device="png",
        height = 20,
@@ -514,43 +556,26 @@ phyla_box <- ggplot(top_phyla,
     geom_jitter(height = 0.1,width = 0.0001, stat="identity",alpha=0.9, aes(color=LABEL2))+
     scale_x_continuous(breaks=seq(0,0.5,0.1))+
     scale_color_manual(values=colors_label2)+
-    xlab("Relative adundance")+
+    xlab("Relative abundance")+
     theme_bw()+
     theme(legend.position = c(0.75,0.2),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
           panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
 
-ggsave("figures/taxonomy_phyla_box.png",
+ggsave("figures/taxonomy_representative_phyla_box.png",
        plot=phyla_box,
        device="png",
        height = 20,
        width = 23,
        units="cm")
 
-### representative phyla samples
-representative_phyla_samples <- ggplot(phyla_stats,
-       aes(x = proportion_sample, y = reorder(Phylum, proportion_sample))) +
-  geom_point(size = 2) +  # Use a larger dot
-  theme_bw() +
-  theme(
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
-  )
 
-ggsave("figures/taxonomy_representative_phyla_samples.png",
-       plot=representative_phyla_samples,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-############################ Heatmap Phyla Samples ############################
+############################ Heatmap distribution Phyla Samples ############################
 phyla_samples_w_z <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
-                values_from=z_srs,
+                values_from=relative_srs,
                 values_fill=0) %>%
     as.data.frame() %>% 
     column_to_rownames("ENA_RUN")
@@ -558,7 +583,7 @@ phyla_samples_w_z <- phyla_samples_summary %>%
 phyla_samples_w <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
                 names_from=Phylum,
-                values_from=reads_srs_sum,
+                values_from=relative_srs,
                 values_fill=0) %>%
     as.data.frame() %>%
     column_to_rownames("ENA_RUN")
@@ -566,7 +591,7 @@ phyla_samples_w <- phyla_samples_summary %>%
 dcols = vegdist(phyla_samples_w, method="bray")
 drows = vegdist(t(phyla_samples_w), method="robust.aitchison")
 
-png("figures/taxonomy_heatmap_phyla_samples.png",
+png("figures/taxonomy_distribution_heatmap_phyla_samples.png",
     res=300,
     width=70,
     height=30,
@@ -579,198 +604,29 @@ pheatmap(t(phyla_samples_w_z),
 
 dev.off()
 
-################################ Phyla and genera  #########################
+######################### Taxa distribution vs samples #####################
 
-
-########################### Generalists and specialists ##################
-## Abundance (y axis) and occupancy (x axis) plot
-## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
-
-################## ASV  #################################
-asv_stat_sample <- ggplot() +
-    geom_point(asv_metadata,
-               mapping=aes(x=n_samples, y=reads_srs_mean, color=classification)) +
-    geom_errorbar(asv_metadata,
-                  mapping=aes(x=n_samples,
-                              y=reads_srs_mean,
-                              ymin=reads_srs_mean-reads_srs_sd,
-                              ymax=reads_srs_mean+reads_srs_sd,
-                              alpha=0.5, colour=classification))+
-    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
-#    scale_y_continuous(trans='log10', name = "ASVs",
-#                     breaks=trans_breaks('log10', function(x) 10^x),
-#                     labels=trans_format('log10', math_format(10^.x))) +
-    theme_bw() +
-    theme(panel.grid = element_blank(),
-          axis.text = element_text(size=13),
-          axis.title.x=element_text(face="bold", size=13),
-          axis.title.y=element_text(face="bold", size=13),
-          legend.position = c(0.88, 0.8))
-
-ggsave("figures/taxonomy_asv_generalists.png",
-       plot=asv_stat_sample,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-asv_stat_sample_cla <- ggplot(data= asv_metadata, mapping=aes(x=n_samples, y=reads_srs_mean)) +
-    geom_point(asv_metadata,
-               mapping=aes(x=n_samples, y=reads_srs_mean, color=classification)) +
-    geom_errorbar(asv_metadata,
-                  mapping=aes(x=n_samples,
-                              y=reads_srs_mean,
-                              ymin=reads_srs_mean-reads_srs_sd,
-                              ymax=reads_srs_mean+reads_srs_sd,
-                              alpha=0.5, colour=classification))+
-    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
-#    scale_y_continuous(trans='log10', name = "ASVs",
-#                     breaks=trans_breaks('log10', function(x) 10^x),
-#                     labels=trans_format('log10', math_format(10^.x))) +
-    theme_bw() +
-    theme(panel.grid = element_blank(),
-          axis.text = element_text(size=13),
-          axis.title.x=element_text(face="bold", size=13),
-          axis.title.y=element_text(face="bold", size=13),
-          legend.position = "bottom") + 
-    facet_wrap(vars(classification))
-
-ggsave("figures/taxonomy_asv_generalists_cla.png",
-       plot=asv_stat_sample_cla,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-############################## genera ####################
-genera_phyla_samples <- community_matrix_l %>%
-    filter(!is.na(Genus)) %>%
-    group_by(Phylum,Genus,ENA_RUN) %>%
-    summarise(asvs=sum(asvs),
-              reads_srs_mean=mean(reads_srs_sum),
-              reads_srs_sum=sum(reads_srs_sum), .groups="keep") %>%
-    group_by(ENA_RUN) %>%
-    mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
-    ungroup()
-
-
-
-genera_stat_sample <- ggplot() +
-    geom_point(genera_phyla_stats,
-               mapping=aes(x=proportion_sample,
-                           y=average_relative,
-                           color=Phylum)) +
-#    geom_errorbar(genera_phyla_stats,
-#                  mapping=aes(x=n_samples,
-#                              y=reads_srs_mean,
-#                              ymin=reads_srs_mean-reads_srs_sd,
-#                              ymax=reads_srs_mean+reads_srs_sd,
-#                              alpha=0.5, colour=Phylum))+
-#    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
-#    scale_y_continuous(trans='log10', name = "ASVs",
-#                     breaks=trans_breaks('log10', function(x) 10^x),
-#                     labels=trans_format('log10', math_format(10^.x))) +
-    theme_bw() +
-    theme(panel.grid = element_blank(),
-          axis.text = element_text(size=13),
-          axis.title.x=element_text(face="bold", size=13),
-          axis.title.y=element_text(face="bold", size=13),
-          legend.position = "bottom")
-
-ggsave("figures/taxonomy_genera_generalists.png",
-       plot=genera_stat_sample,
-       device="png",
-       height = 20,
-       width = 35,
-       units="cm")
-
-genera_stat_sample_f <- genera_stat_sample + facet_wrap(vars(Phylum))
-
-ggsave("figures/taxonomy_genera_generalists_facet.png",
-       plot=genera_stat_sample_f,
-       device="png",
-       height = 50,
-       width = 80,
-       units="cm")
-
-########################## specialists ##############################
-phyla_specialists <- phyla_stats %>%
-    filter(proportion_sample<0.25) 
-
-phyla_specialists_samples <- phyla_genera_samples_summary %>%
-    filter(Phylum %in% phyla_specialists$Phylum)
-
-base_crete_map <- ggplot() +
-        geom_sf(crete_shp, mapping=aes()) +
-        geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
-        scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
-                                      title="elevation",
-                                      direction = "vertical",
-                                      title.vjust = 0.8),
-                            colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
-                            breaks = c(100, 800, 1500, 2400),
-                            labels = c(100, 800, 1500, 2400))+
-        coord_sf(crs="wgs84") +
-        theme_bw()+
-        theme(axis.title=element_blank(),
-              axis.text=element_text(colour="black"),
-              legend.text=element_text(size=8),
-              legend.title = element_text(size=8),
-              legend.position = "bottom",
-              legend.box.background = element_blank())
-
-for (phy in phyla_stats$Phylum){
-
-    phyla_samples_loc <- phyla_genera_samples_summary %>%
-        filter(Phylum==phy) %>%
-        left_join(locations_spatial, by=c("ENA_RUN"="ENA_RUN"))
-    
-    crete_phylum <- base_crete_map +
-        geom_point(phyla_samples_loc,
-                mapping=aes(x=longitude, y=latitude, color=relative_srs, size=relative_srs),
-                alpha=0.8,
-                show.legend=T) +
-        geom_label(data = phyla_samples_loc,
-                   mapping=aes(x = longitude, y = latitude, label = ENA_RUN),
-                   size = 1.8,
-                   nudge_x = 0.07,
-                   nudge_y=0.07,
-                   label.padding = unit(0.1, "lines"))+
-        scale_color_gradient(low = "skyblue", high = "goldenrod3")+
-        ggtitle(phy) 
-    
-    
-    ggsave(paste0("figures/map_phyla_",phy,".png"),
-           plot=crete_phylum,
-           height = 10,
-           width = 20,
-           dpi = 300,
-           units="cm",
-           device="png")
-}
-
-######################### ASVs distribution vs samples #####################
-
-asv_sample_dist_t <- asv_metadata %>%
-    group_by(n_samples) %>%
-    summarise(n_asv=n()) %>% 
+taxa_sample_dist_t <- community_matrix_l |>
+    group_by(scientificName,classification) |>
+    summarise(n_samples=n(),n_asvs=sum(asvs),.groups="keep") |>
+    group_by(n_samples) |>
+    summarise(n_taxa=n()) |>
     mutate(classification="total")
 
-asv_sample_dist_c <- asv_metadata %>%
+taxa_sample_dist_c <- community_matrix_l %>%
+    group_by(scientificName,classification) |>
+    summarise(n_samples=n(),n_asvs=sum(asvs),.groups="keep") |>
     group_by(n_samples, classification) %>%
-    summarise(n_asv=n(), .groups="keep")
+    summarise(n_taxa=n(), .groups="keep")
 
-asv_sample_dist <- rbind(asv_sample_dist_t, asv_sample_dist_c)
+taxa_sample_dist <- rbind(taxa_sample_dist_t, taxa_sample_dist_c)
 
 
-### do the generalist and specialist
-### mean abundance and n sites
-
-asv_sample_dist_plot <- ggplot() +
-    geom_point(asv_sample_dist,
-               mapping=aes(x=n_asv, y=n_samples, color=classification)) +
-    scale_y_continuous(breaks=seq(0,150,10), name="Number of samples") +
-    scale_x_continuous(trans='log10', name = "ASVs",
+taxa_sample_dist_plot <- ggplot() +
+    geom_point(taxa_sample_dist_t,
+               mapping=aes(y=n_taxa, x=n_samples)) +
+    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+    scale_y_continuous(trans='log10', name = "Number of Taxa",
                      breaks=trans_breaks('log10', function(x) 10^x),
                      labels=trans_format('log10', math_format(10^.x))) +
     theme_bw() +
@@ -780,14 +636,194 @@ asv_sample_dist_plot <- ggplot() +
           axis.title.y=element_text(face="bold", size=13),
           legend.position = c(0.88, 0.8))
 
-ggsave("figures/taxonomy_asv_n_samples.png",
-       plot=asv_sample_dist_plot,
+ggsave("figures/taxonomy_distribution_samples.png",
+       plot=taxa_sample_dist_plot,
        device="png",
        height = 20,
        width = 23,
        units="cm")
 
+taxa_sample_dist_plot_f <- ggplot() +
+    geom_point(taxa_sample_dist,
+               mapping=aes(y=n_taxa, x=n_samples)) +
+    scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+    scale_y_continuous(trans='log10', name = "Numer of Taxa",
+                     breaks=trans_breaks('log10', function(x) 10^x),
+                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.88, 0.8)) +
+    facet_wrap(vars(classification),scales="fixed")
 
+ggsave("figures/taxonomy_distribution_samples_facet.png",
+       plot=taxa_sample_dist_plot_f,
+       device="png",
+       height = 20,
+       width = 43,
+       units="cm")
+
+################################ Phyla and genera #########################
+############################## genera prevalence ##########################
+n_phyla <- length(unique(genera_phyla_samples$Phylum))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+fill_colors <- colorRampPalette(okabe_ito_colors)(n_phyla)
+
+genera_phyla_stats <- genera_phyla_samples |>
+    group_by(Phylum,Genus) |>
+    summarise(n_samples = n(),
+              proportion_samples = n_samples/total_samples,
+              asvs=sum(asvs),
+              relative_abundance_mean=mean(relative_srs),
+              relative_abundance_sd=sd(relative_srs), .groups="keep") |>
+    arrange(desc(proportion_samples), desc(relative_abundance_mean)) |>
+    ungroup()
+
+genera_stat_sample <- ggplot() +
+    geom_point(genera_phyla_stats,
+               mapping=aes(x=proportion_samples,
+                           y=relative_abundance_mean,
+                           color=Phylum)) +
+#    geom_errorbar(genera_phyla_stats,
+#                  mapping=aes(x=proportion_samples,
+#                              y=relative_abundance_mean,
+#                              ymin=relative_abundance_mean-relative_abundance_sd,
+#                              ymax=relative_abundance_mean+relative_abundance_sd,
+#                              alpha=0.5, colour=Phylum))+
+    scale_color_manual(values=fill_colors)+
+    xlab("Samples proportion")+
+    scale_y_continuous(trans='log10', name = "Mean relative abundance",
+                     breaks=trans_breaks('log10', function(x) 10^x),
+                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = "bottom")
+
+ggsave("figures/taxonomy_prevalence_genera.png",
+       plot=genera_stat_sample,
+       device="png",
+       height = 20,
+       width = 35,
+       units="cm")
+
+genera_stat_sample_f <- genera_stat_sample + facet_wrap(vars(Phylum))
+
+ggsave("figures/taxonomy_prevalence_genera_facet.png",
+       plot=genera_stat_sample_f,
+       device="png",
+       height = 50,
+       width = 80,
+       units="cm")
+
+########################### Generalists and specialists ##################
+## Abundance (y axis) and occupancy (x axis) plot
+## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
+
+taxa_sample_abundance <- community_matrix_l |>
+    group_by(scientificName,Phylum) |>
+    summarise(n_samples=n(),
+              proportion_samples=n_samples/total_samples,
+              mean_abundance=mean(reads_srs_sum),
+              mean_rel_abundance=mean(relative_srs),
+              sd_abundance=sd(reads_srs_sum),.groups="keep") |>
+    mutate(prevalence_class=ifelse(n_samples<10 & mean_rel_abundance>0.003,
+                                   "specialists",ifelse(n_samples>120, "generalists","no classification")))
+
+taxa_stat_sample <- ggplot() +
+    geom_point(taxa_sample_abundance,
+               mapping=aes(x=proportion_samples, y=mean_rel_abundance, color=prevalence_class)) +
+#    geom_errorbar(taxa_sample_abundance,
+#                  mapping=aes(x=n_samples,
+#                              y=,
+#                              ymin=mean_abundance-sd_abundance,
+#                              ymax=mean_abundance+sd_abundance,
+#                              alpha=0.5))+
+    scale_color_manual(values=c("generalists"="#1370A1",
+                                "no classification"="#999999",
+                                "specialists"="#AE6120"),
+                       name="Prevalence")+
+    #scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+    xlab("Samples proportion")+
+    scale_y_continuous(trans='log10', name = "Mean relative abundance",
+                     breaks=trans_breaks('log10', function(x) 10^x),
+                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.9, 0.08))
+
+ggsave("figures/taxonomy_prevalence_specialists_generalists.png",
+       plot=taxa_stat_sample,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+taxa_stat_sample_cla <- taxa_stat_sample + 
+    scale_x_continuous(breaks=seq(0,150,30), name="Number of samples") +
+    facet_wrap(vars(Phylum))
+
+ggsave("figures/taxonomy_prevalence_specialists_generalists_cla.png",
+       plot=taxa_stat_sample_cla,
+       device="png",
+       height = 60,
+       width = 60,
+       units="cm")
+
+########################## specialists ##############################
+taxa_specialists <- taxa_sample_abundance |>
+    ungroup() |>
+    filter(prevalence_class=="specialists") |>
+    distinct(scientificName) 
+
+taxa_specialists_samples <- community_matrix_l %>%
+    filter(scientificName %in% taxa_specialists$scientificName)
+
+for (taxon in taxa_specialists$scientificName){
+
+    taxon_samples_loc <- taxa_specialists_samples %>%
+        filter(scientificName==taxon) %>%
+        left_join(locations_spatial, by=c("ENA_RUN"="ENA_RUN"))
+    
+    crete_taxon <- crete_dem +
+        geom_point(taxon_samples_loc,
+                mapping=aes(x=longitude, y=latitude, color=relative_srs, size=relative_srs),
+                alpha=0.8,
+                show.legend=T) +
+        geom_label(data = taxon_samples_loc,
+                   mapping=aes(x = longitude, y = latitude, label = ENA_RUN),
+                   size = 1.8,
+                   nudge_x = 0.07,
+                   nudge_y=0.07,
+                   label.padding = unit(0.1, "lines"))+
+        scale_color_gradient(low = "skyblue", high = "palevioletred3")+
+        guides(color= guide_legend("Relative abundance"), size=guide_legend("Relative abundance"))+
+        ggtitle(taxon) + 
+        theme(axis.title=element_blank(),
+              panel.border = element_blank(),
+              panel.grid.major = element_blank(), #remove major gridlines
+              panel.grid.minor = element_blank(), #remove minor gridlines
+              line = element_blank(),
+              axis.text=element_blank(),
+              legend.text=element_text(size=5),
+              legend.title = element_text(size=5),
+              legend.position = "bottom")
+
+    ggsave(paste0("figures/map_phyla_",taxon,".png"),
+           plot=crete_taxon,
+           height = 10,
+           width = 20,
+           dpi = 300,
+           units="cm",
+           device="png")
+}
 ##################### Sample Diversity boxplots #########################
 # Metadata to long format for diversity indices
 metadata_diversity <- metadata %>%
