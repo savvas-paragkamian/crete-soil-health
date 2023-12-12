@@ -1179,9 +1179,7 @@ for (fun in faprotax_functions){
     faprotax_genera_l_4<- faprotax_genera_loc %>% filter(value > quantile_4)
     
     
-    crete_function <- ggplot() +
-        geom_sf(crete_shp, mapping=aes()) +
-        geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
+    crete_function <- crete_dem +
         geom_point(faprotax_genera_l_4,
                 mapping=aes(x=longitude, y=latitude, color=value, size=value),
                 alpha=0.8,
@@ -1192,24 +1190,18 @@ for (fun in faprotax_functions){
                    nudge_x = 0.07,
                    nudge_y=0.07,
                    label.padding = unit(0.1, "lines"))+
-        scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
-                                      title="elevation",
-                                      direction = "vertical",
-                                      title.vjust = 0.8),
-                            colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
-                            breaks = c(100, 800, 1500, 2400),
-                            labels = c(100, 800, 1500, 2400))+
-        scale_color_gradient(low = "skyblue", high = "goldenrod3")+
+        scale_color_gradient(low = "skyblue", high = "palevioletred3")+
+        guides(color= guide_legend("Relative abundance"), size=guide_legend("Relative abundance"))+
         ggtitle(fun) +
-        coord_sf(crs="wgs84") +
-        theme_bw()+
         theme(axis.title=element_blank(),
-              axis.text=element_text(colour="black"),
-              legend.text=element_text(size=8),
-              legend.title = element_text(size=8),
-              legend.position = "bottom",
-              legend.box.background = element_blank())
-    
+              panel.border = element_blank(),
+              panel.grid.major = element_blank(), #remove major gridlines
+              panel.grid.minor = element_blank(), #remove minor gridlines
+              line = element_blank(),
+              axis.text=element_blank(),
+              legend.text=element_text(size=5),
+              legend.title = element_text(size=5),
+              legend.position = "bottom")
     
     ggsave(paste0("figures/map_faprotax_",fun,".png"),
            plot=crete_function,
