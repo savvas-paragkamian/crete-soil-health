@@ -816,7 +816,7 @@ for (taxon in taxa_specialists$scientificName){
               legend.title = element_text(size=5),
               legend.position = "bottom")
 
-    ggsave(paste0("figures/map_phyla_",taxon,".png"),
+    ggsave(paste0("figures/map_specialist_",taxon,".png"),
            plot=crete_taxon,
            height = 10,
            width = 20,
