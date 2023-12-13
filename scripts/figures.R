@@ -10,7 +10,27 @@
 # plots, scatterplots etc.
 ###############################################################################
 # OUTPUT:
+# 1. Maps
+#   a) blank
+#   b) elevation
+#   c) land cover
+#   d) geology
+#   e) bioclim
+# 2. Taxonomy: 
+#   a) distribution
+#   b) ratios
+#   c) representative taxa
+#   d) prevalence
+# 3. Numerical ecology
+#   a) diversity indices
+#   b) beta diversity
+#   c) ordination
+# 4. Functional profiles
+#   a) distribution
+#   b) ratios
 #
+###############################################################################
+# time: takes ~1 hour because of the many maps produced
 ###############################################################################
 # usage:./scripts/figures.R
 ###############################################################################
@@ -1062,6 +1082,127 @@ ggsave("figures/community_dissimilarity_nitrogen_difference.png",
        height = 20,
        width = 23,
        units="cm")
+
+########### community dissimilarity tests #############
+community_matrix <- readRDS("results/community_matrix.RDS")
+
+metadata_f <- metadata |>
+    filter(ENA_RUN %in% rownames(community_matrix))
+
+# calculate the bray dissimilatiry
+bray <- vegdist(community_matrix)
+
+# geology
+
+# multivariate dispersion (variance) for a group of samples is to calculate
+# the average distance of group members to the group centroid or spatial
+# median (both referred to as 'centroid' from now on unless stated otherwise)
+# in multivariate space. 
+mod <- betadisper(bray, metadata_f$geology_na)
+png("figures/community_betadisper_geology_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+## test to see if there are any significant differences 
+anova(mod)
+### Pairwise comparisons of group mean dispersions can also be performed using
+### permutest.betadisper. An alternative to the classical comparison of group
+### dispersions, is to calculate Tukey's Honest Significant Differences between
+### groups, via TukeyHSD.betadisper. This is a simple wrapper to TukeyHSD. The
+### user is directed to read the help file for TukeyHSD before using this
+### function. In particular, note the statement about using the function with unbalanced designs.
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+
+png("figures/community_betadisper_geology.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+# label2
+
+mod <- betadisper(bray, metadata_f$LABEL2)
+png("figures/community_betadisper_label2_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+png("figures/community_betadisper_label2.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+# label3
+
+mod <- betadisper(bray, metadata_f$LABEL3)
+png("figures/community_betadisper_label3_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+png("figures/community_betadisper_label3.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+#plot(mod.HSD)
+# elevation
+mod <- betadisper(bray, metadata_f$elevation_bin)
+
+png("figures/community_betadisper_elevation_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+png("figures/community_betadisper_elevation_bin.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+
+
+#### permanova
+adonis_geology <- adonis2(community_matrix ~ geology_na, data=metadata_f, permutations=99)
+
+adonis_label2 <- adonis2(community_matrix ~ LABEL2, data=metadata_f, permutations=99)
+adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
 
 ##### difference between locations 
 ###
