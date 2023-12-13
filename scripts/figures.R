@@ -1498,11 +1498,14 @@ clr <- function(x, na.rm = FALSE) {
 
 scale2 <- function(x, na.rm = FALSE) (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
 ### load data
-faprotax_samples <- read_delim("results/faprotax_functional_table.tsv", delim="\t")
-faprotax_genera <- read_delim("results/faprotax_genera_functional_table.tsv", delim="\t")
+faprotax <- read_delim("results/faprotax_functional_table.tsv", delim="\t")
+#faprotax_genera <- read_delim("results/faprotax_genera_functional_table.tsv", delim="\t")
 
+# which empty
+
+faprotax_empty <- faprotax[rowSums(faprotax[,-1])==0,]
 # filter empty
-faprotax_genera <- faprotax_genera[rowSums(faprotax_genera[,-1])!=0,]
+faprotax <- faprotax[rowSums(faprotax[,-1])!=0,]
 ##### bar plot
 
 ################################# Heatmap ###############################
@@ -1513,24 +1516,25 @@ faprotax_genera <- faprotax_genera[rowSums(faprotax_genera[,-1])!=0,]
 
 #write_delim(faprotax_community_matrix,"results/faprotax_community_matrix.tsv",delim="\t")
 
-faprotax_genera_w <- faprotax_genera %>%
+faprotax_w <- faprotax %>%
     filter(!(group %in% c("aerobic_chemoheterotrophy", "chemoheterotrophy"))) %>%
     as.data.frame() %>% 
-    column_to_rownames("group") %>% 
-    mutate_all(clr) %>%
-    mutate_all(sqrt) 
+    column_to_rownames("group")# %>% 
+#    mutate_all(clr) #%>%
+#    mutate_all(sqrt) 
 
-#drows = vegdist(phyla_samples_w, method="bray")
-dcols = vegdist(t(faprotax_genera[,-1]), method="bray")
+drows = vegdist(faprotax_w, method="jaccard")
+dcols = vegdist(t(faprotax_w[,-1]), method="bray")
 
-png("figures/functions_faprotax_genera.png",
+png("figures/functions_faprotax.png",
     res=300,
     width=60,
     height=40,
     unit="cm")
 
-pheatmap(faprotax_genera_w,
+pheatmap(faprotax_w,
          clustering_distance_cols = dcols,
+         clustering_distance_rows = drows,
          color=colorRampPalette(c("white",
                                   "skyblue",
                                   "cornflowerblue",
@@ -1543,20 +1547,20 @@ dev.off()
 
 # heatmap with geology order
 my_sample_col <- metadata %>%
-    filter(ENA_RUN %in% colnames(faprotax_genera_w)) %>%
+    filter(ENA_RUN %in% colnames(faprotax_w)) %>%
     dplyr::select(geology_na,ENA_RUN) %>%
     arrange(geology_na) %>%
     column_to_rownames("ENA_RUN") %>%
     as.data.frame()
 
 
-png("figures/functions_faprotax_genera_geology.png",
+png("figures/functions_faprotax_geology.png",
     res=300,
     width=60,
     height=40,
     unit="cm")
 
-pheatmap(faprotax_genera_w[,rownames(my_sample_col)],
+pheatmap(faprotax_w[,rownames(my_sample_col)],
          annotation_col = my_sample_col, 
          cluster_cols = FALSE,
         # clustering_distance_cols = dcols,
@@ -1572,19 +1576,19 @@ dev.off()
 
 # heatmap with label2 order
 my_sample_col <- metadata %>%
-    filter(ENA_RUN %in% colnames(faprotax_genera_w)) %>%
+    filter(ENA_RUN %in% colnames(faprotax_w)) %>%
     dplyr::select(LABEL2,ENA_RUN) %>%
     arrange(LABEL2) %>%
     column_to_rownames("ENA_RUN") %>%
     as.data.frame()
 
-png("figures/functions_faprotax_genera_LABEL2.png",
+png("figures/functions_faprotax_LABEL2.png",
     res=300,
     width=70,
     height=40,
     unit="cm")
 
-pheatmap(faprotax_genera_w[,rownames(my_sample_col)],
+pheatmap(faprotax_w[,rownames(my_sample_col)],
          annotation_col = my_sample_col, 
          cluster_cols = FALSE,
          color=colorRampPalette(c("white",
@@ -1598,24 +1602,24 @@ pheatmap(faprotax_genera_w[,rownames(my_sample_col)],
 dev.off()
 ###### 
 
-faprotax_genera_l <- faprotax_genera %>%
+faprotax_l <- faprotax %>%
     pivot_longer(-group,names_to="ENA_RUN", values_to="value" ) %>%
     filter(!(group %in% c("aerobic_chemoheterotrophy", "chemoheterotrophy"))) %>%
     filter(value!=0) %>%
     mutate(value_clr = clr(value))
 
-faprotax_filtered <- faprotax_genera_l |>
+faprotax_filtered <- faprotax_l |>
     filter(value > 0.0001)
 
-plant_pathogen <- faprotax_genera_l %>%
+plant_pathogen <- faprotax_l %>%
     filter(group=="plant_pathogen") %>%
     arrange(desc(value))
 
-human_pathogen <- faprotax_genera_l %>%
+human_pathogen <- faprotax_l %>%
     filter(group=="human_pathogens_all") %>%
     arrange(desc(value))
 
-n_functions <- length(unique(faprotax_genera_l$group))
+n_functions <- length(unique(faprotax_l$group))
 okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
 fill_colors <- colorRampPalette(okabe_ito_colors)(n_functions)
 
@@ -1643,7 +1647,7 @@ ggsave("figures/faprotax_ratios_bar.png",
        units="cm")
 
 #### faprotax nitrogen related groups boxplot
-faprotax_nitr <- faprotax_genera_l |>
+faprotax_nitr <- faprotax_l |>
     dplyr::filter(grepl("nitr",group)) |>
     left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
 
@@ -1675,25 +1679,25 @@ ggsave("figures/faprotax_nitr_box.png",
 
 
 ####################### faprotax maps ########################
-faprotax_functions <- unique(faprotax_genera_l$group)
+faprotax_functions <- unique(faprotax_l$group)
 
 for (fun in faprotax_functions){
 
-    faprotax_genera_loc <- faprotax_genera_l %>%
+    faprotax_loc <- faprotax_l %>%
         filter(group==fun) %>%
         left_join(locations_spatial, by=c("ENA_RUN"="ENA_RUN"))
     
-    quantile_4 <- quantile(faprotax_genera_loc$value,na.rm = T,probs = c(0.75)) 
+    quantile_4 <- quantile(faprotax_loc$value,na.rm = T,probs = c(0.75)) 
     
-    faprotax_genera_l_4<- faprotax_genera_loc %>% filter(value > quantile_4)
+    faprotax_l_4<- faprotax_loc %>% filter(value > quantile_4)
     
     
     crete_function <- crete_dem +
-        geom_point(faprotax_genera_l_4,
+        geom_point(faprotax_l_4,
                 mapping=aes(x=longitude, y=latitude, color=value, size=value),
                 alpha=0.8,
                 show.legend=T) +
-        geom_label(data = faprotax_genera_l_4,
+        geom_label(data = faprotax_l_4,
                    mapping=aes(x = longitude, y = latitude, label = ENA_RUN),
                    size = 1.8,
                    nudge_x = 0.07,
