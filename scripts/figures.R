@@ -416,7 +416,7 @@ phyla_samples_summary <- community_matrix_l %>%
     group_by(ENA_RUN) %>%
     mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
     mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum)) %>%
-    left_join(dplyr::select(metadata, ENA_RUN, LABEL1, LABEL2,LABEL3, elevation, elevation_bin), by=c("ENA_RUN"="ENA_RUN"))
+    left_join(dplyr::select(metadata, ENA_RUN, LABEL1, LABEL2,LABEL3, elevation, elevation_bin, geology_na), by=c("ENA_RUN"="ENA_RUN"))
     
 phyla_stats <- phyla_samples_summary %>% 
     group_by(Phylum) %>%
@@ -516,6 +516,46 @@ ggsave("figures/taxonomy_ratios_phyla_samples.png",
        width = 38,
        units="cm")
 
+## phyla ratios and elevation
+categories <- c("elevation_bin", "geology_na", "LABEL2")
+
+for (cat in categories){
+
+    phyla_samples_summary$category <- phyla_samples_summary[[cat]]
+
+    phyla_samples_metadata <- phyla_samples_summary |>
+    #    left_join(metadata, by=c("ENA_RUN"="ENA_RUN")) |>
+        group_by(category, Phylum) |>
+        summarise(n_samples=n(),
+                  reads_sum=sum(reads_srs_sum),.groups="drop") |>
+        group_by(category) |>
+        mutate(relative_abundance_e=reads_sum/sum(reads_sum))
+
+    phyla_ratios_cat_bar <- ggplot() + 
+        geom_col(phyla_samples_metadata, mapping=aes(x=category,
+                                                    y=relative_abundance_e,
+                                                    fill=Phylum)) +
+        scale_fill_manual(values=fill_colors) +
+        theme_bw()+
+        coord_flip()+
+        scale_y_continuous(expand = c(0, 0), name="")+
+        theme(axis.text.x = element_text(face="bold",
+                                         size = 15),
+              axis.ticks.y=element_blank(),axis.title=element_blank(),
+              axis.text.y=element_text(size=10, hjust=0, vjust=0)) +
+        theme(legend.position="bottom",
+                panel.border = element_blank(),
+                panel.grid.major = element_blank(), #remove major gridlines
+                panel.grid.minor = element_blank())+
+        guides(fill=guide_legend(nrow=7,byrow=TRUE))
+    
+    ggsave(paste0("figures/taxonomy_ratios_phyla_",cat,".png"),
+           plot=phyla_ratios_cat_bar,
+           device="png",
+           height = 55,
+           width = 38,
+           units="cm")
+}
 
 # top phyla ratios
 top_phyla <- phyla_samples_summary |> 
@@ -556,6 +596,7 @@ ggsave("figures/taxonomy_ratios_top_phyla_samples.png",
        height = 55,
        width = 38,
        units="cm")
+
 
 ############# Representative phyla of Cretan soils ########################
 
@@ -965,11 +1006,63 @@ for (cat in cats){
 }
 
 ###################### Sample similarity ############################
-sample_cooccur_l<- read_delim("results/sample_cooccur_l.tsv", delim="\t")
+
+sample_cooccur_l <- read_delim("results/sample_cooccur_l.tsv", delim="\t") |>
+    left_join(metadata, by=c("rowname"="ENA_RUN")) |>
+    left_join(metadata, by=c("colname"="ENA_RUN")) |>
+    mutate(elevation_difference=abs(elevation.x - elevation.y)) |>
+    mutate(site_locations=ifelse(sites.x==sites.y,"same site","differenct site"))
+
+elevation_difference_g <- ggplot() +
+    geom_point(sample_cooccur_l,
+               mapping=aes(x=elevation_difference, y=bray)) +
+#    scale_color_manual(values=c("generalists"="#1370A1",
+#                                "no classification"="#999999",
+#                                "specialists"="#AE6120"),
+#                       name="Prevalence")+
+    xlab("Elevation difference")+
+    ylab("Sample (dis)similarity")+
+    scale_x_continuous(breaks=seq(0,2000,250))+
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.9, 0.08))
+
+ggsave("figures/community_dissimilarity_elevation_difference.png",
+       plot=elevation_difference_g,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+
+##### difference between locations 
+###
+
+site_locations_dif <- ggplot(sample_cooccur_l, 
+                             mapping=aes(x=site_locations, y=bray))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(height = 0.00001,width = 0.3, stat="identity",aes(alpha=0.5), color="gray50")+
+    scale_y_continuous(breaks=seq(0,1,0.2))+
+    xlab("Sample location") +
+    ylab("Sample (dis)similarity")+
+    theme_bw()+
+    theme(legend.position = "none",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+ggsave("figures/community_site_locations_dif.png",
+       plot=site_locations_dif,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
 
 ######################### Ordination ############################
 ######### plots sites ###########
-
 
 nmds_isd_sites <- read_delim("results/nmds_isd_sites.tsv", delim="\t")
 umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
