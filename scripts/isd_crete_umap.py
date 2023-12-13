@@ -17,7 +17,7 @@ import os, sys
 import umap
 
 ## files
-community_matrix_path = "results/genera_samples_matrix.tsv"
+community_matrix_path = "results/community_matrix.tsv"
 output_path = "results/"
 
 community_matrix = pd.read_csv(community_matrix_path, sep="\t")
@@ -66,7 +66,7 @@ umap_function(community_array,df_samples, 1, "samples")
 
 # taxa
 print("UMAP taxa is ongoing")
-umap_function(community_array_t,df_taxa,3,"genera")
-umap_function(community_array_t,df_taxa,2,"genera")
-umap_function(community_array_t,df_taxa,1,"genera")
+umap_function(community_array_t,df_taxa,3,"taxa")
+umap_function(community_array_t,df_taxa,2,"taxa")
+umap_function(community_array_t,df_taxa,1,"taxa")
 
