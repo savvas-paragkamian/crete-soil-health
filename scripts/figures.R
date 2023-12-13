@@ -89,6 +89,15 @@ natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
 dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
+# raster bioclim 1 Annual Mean Temperature
+bioclim1_crete <- raster("spatial_data/world_clim_crete/crete_wc2.1_30s_bio_1.tif")
+bioclim1_crete_pixel <- as(bioclim1_crete, "SpatialPixelsDataFrame")
+bioclim1_crete_df <- as.data.frame(bioclim1_crete_pixel) 
+
+# raster bioclim 12 Annual Mean Precipitation
+bioclim12_crete <- raster("spatial_data/world_clim_crete/crete_wc2.1_30s_bio_12.tif")
+bioclim12_crete_pixel <- as(bioclim12_crete, "SpatialPixelsDataFrame")
+bioclim12_crete_df <- as.data.frame(bioclim12_crete_pixel) 
 
 ####################### UCIE #########################
 # UCIE needs 3 axis of ordination
@@ -398,12 +407,16 @@ crete_geology_plot <- ggplot() +
     coord_sf(crs="WGS84") +
     theme_bw()+
     theme(axis.title=element_blank(),
-          axis.text=element_text(colour="black"),
-          legend.title = element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=8),
+          legend.title = element_text(size=8),
           legend.position = "bottom",
-          legend.box.background = element_blank(),
-          legend.key.size = unit(8, "mm"), 
-          legend.text=element_text(size=8))
+          legend.box.background = element_blank())
 
 ggsave("figures/map_crete_geology.tiff", 
        plot=crete_geology_plot, 
@@ -418,6 +431,93 @@ ggsave("figures/map_crete_geology.png",
        height = 10, 
        width = 20,
        dpi = 300, 
+       units="cm",
+       device="png")
+
+######################## Bioclimatic variables ##########################
+crete_bioclim1 <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(bioclim1_crete_df, mapping=aes(x=x, y=y, fill=crete_wc2.1_30s_bio_1))+
+    scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
+                                  title="Annual Mean\nTemperature",
+                                  direction = "vertical",
+                                  title.vjust = 0.8),
+                        colours = c("snow3","skyblue","goldenrod3","palevioletred3"),
+                        breaks = c(6, 10, 15, 20),
+                        labels = c(7, 10, 15, 19),
+                        limits=c(6,20))+
+    coord_sf(crs="wgs84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=8),
+          legend.title = element_text(size=8),
+          legend.position = c(0.95,0.8),
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_bioclim1_temp.tiff",
+       plot=crete_bioclim1,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_bioclim1_temp.png",
+       plot=crete_bioclim1,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+crete_bioclim12 <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(bioclim12_crete_df, mapping=aes(x=x, y=y, fill=crete_wc2.1_30s_bio_12))+
+    scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
+                                  title="Annual Mean\nPercipitation",
+                                  direction = "vertical",
+                                  title.vjust = 0.8),
+                        colours = c("snow3","cornflowerblue", "darkslateblue"),
+                        breaks = c(467.0,650, 850, 1050.0),
+                        labels = c(470, 600, 700, 1000),
+                        limits=c(460,1100))+
+    coord_sf(crs="wgs84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=8),
+          legend.title = element_text(size=8),
+          legend.position = c(0.95,0.8),
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_bioclim12_percipitation.tiff",
+       plot=crete_bioclim12,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_bioclim12_percipitation.png",
+       plot=crete_bioclim12,
+       height = 10,
+       width = 20,
+       dpi = 300,
        units="cm",
        device="png")
 
@@ -1098,7 +1198,7 @@ bray <- vegdist(community_matrix)
 # the average distance of group members to the group centroid or spatial
 # median (both referred to as 'centroid' from now on unless stated otherwise)
 # in multivariate space. 
-mod <- betadisper(bray, metadata_f$geology_na)
+mod <- betadisper(bray, metadata_f$geology_na,type="centroid")
 png("figures/community_betadisper_geology_box.png",
     res=300,
     width=60,
@@ -1128,7 +1228,7 @@ plot(mod.HSD)
 dev.off()
 # label2
 
-mod <- betadisper(bray, metadata_f$LABEL2)
+mod <- betadisper(bray, metadata_f$LABEL2,type="centroid")
 png("figures/community_betadisper_label2_box.png",
     res=300,
     width=60,
@@ -1151,7 +1251,7 @@ plot(mod.HSD)
 dev.off()
 # label3
 
-mod <- betadisper(bray, metadata_f$LABEL3)
+mod <- betadisper(bray, metadata_f$LABEL3,type="centroid")
 png("figures/community_betadisper_label3_box.png",
     res=300,
     width=60,
@@ -1174,7 +1274,7 @@ plot(mod.HSD)
 dev.off()
 #plot(mod.HSD)
 # elevation
-mod <- betadisper(bray, metadata_f$elevation_bin)
+mod <- betadisper(bray, metadata_f$elevation_bin,type="centroid")
 
 png("figures/community_betadisper_elevation_box.png",
     res=300,
@@ -1227,6 +1327,68 @@ ggsave("figures/community_site_locations_dif.png",
        width = 23,
        units="cm")
 
+#### same site different locations 
+same_site <- sample_cooccur_l %>% filter(site_locations=="same site")
+
+same_site_locations_dif <- ggplot(same_site, 
+                             mapping=aes(x=bray,y=LABEL2.x))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(width = 0.00001,height = 0.3, stat="identity",aes(alpha=0.5), color="gray50")+
+    scale_x_continuous(breaks=seq(0,1,0.2),limits = c(0, 1))+
+    ylab("LABEL2") +
+    xlab("Same site Sample (dis)similarity")+
+    theme_bw()+
+    theme(legend.position = "none",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+ggsave("figures/community_site_locations_label2.png",
+       plot=same_site_locations_dif,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+same_site_locations_dif <- ggplot(same_site, 
+                             mapping=aes(x=bray,y=LABEL3.x))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(width = 0.00001,height = 0.3, stat="identity",aes(alpha=0.5), color="gray50")+
+    scale_x_continuous(breaks=seq(0,1,0.2),limits = c(0, 1))+
+    ylab("LABEL3") +
+    xlab("Same site Sample (dis)similarity")+
+    theme_bw()+
+    theme(legend.position = "none",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+ggsave("figures/community_site_locations_label3.png",
+       plot=same_site_locations_dif,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+
+same_site_locations_geo_dif <- ggplot(same_site, 
+                             mapping=aes(x=bray,y=geology_na.x))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(width = 0.00001,height = 0.3, stat="identity",aes(alpha=0.5), color="gray50")+
+    scale_x_continuous(breaks=seq(0,1,0.2),limits = c(0, 1))+
+    ylab("geology") +
+    xlab("Same site sample (dis)similarity")+
+    theme_bw()+
+    theme(legend.position = "none",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+ggsave("figures/community_site_locations_geology.png",
+       plot=same_site_locations_geo_dif,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
 ######################### Ordination ############################
 ######### plots sites ###########
 
