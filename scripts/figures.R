@@ -1011,7 +1011,9 @@ sample_cooccur_l <- read_delim("results/sample_cooccur_l.tsv", delim="\t") |>
     left_join(metadata, by=c("rowname"="ENA_RUN")) |>
     left_join(metadata, by=c("colname"="ENA_RUN")) |>
     mutate(elevation_difference=abs(elevation.x - elevation.y)) |>
-    mutate(site_locations=ifelse(sites.x==sites.y,"same site","differenct site"))
+    mutate(site_locations=ifelse(sites.x==sites.y,"same site","differenct site")) |>
+    mutate(nitrogen_difference=abs(total_nitrogen.x-total_nitrogen.y))
+
 
 elevation_difference_g <- ggplot() +
     geom_point(sample_cooccur_l,
@@ -1037,6 +1039,29 @@ ggsave("figures/community_dissimilarity_elevation_difference.png",
        width = 23,
        units="cm")
 
+nitrogen_difference_g <- ggplot() +
+    geom_point(sample_cooccur_l,
+               mapping=aes(x=nitrogen_difference, y=bray)) +
+#    scale_color_manual(values=c("generalists"="#1370A1",
+#                                "no classification"="#999999",
+#                                "specialists"="#AE6120"),
+#                       name="Prevalence")+
+    xlab("Nitrogen difference")+
+    ylab("Sample (dis)similarity")+
+    #scale_x_continuous(breaks=seq(0,2000,250))+
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.9, 0.08))
+
+ggsave("figures/community_dissimilarity_nitrogen_difference.png",
+       plot=nitrogen_difference_g,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
 
 ##### difference between locations 
 ###
@@ -1272,8 +1297,12 @@ dev.off()
 
 faprotax_genera_l <- faprotax_genera %>%
     pivot_longer(-group,names_to="ENA_RUN", values_to="value" ) %>%
+    filter(!(group %in% c("aerobic_chemoheterotrophy", "chemoheterotrophy"))) %>%
     filter(value!=0) %>%
     mutate(value_clr = clr(value))
+
+faprotax_filtered <- faprotax_genera_l |>
+    filter(value > 0.0001)
 
 plant_pathogen <- faprotax_genera_l %>%
     filter(group=="plant_pathogen") %>%
@@ -1283,25 +1312,66 @@ human_pathogen <- faprotax_genera_l %>%
     filter(group=="human_pathogens_all") %>%
     arrange(desc(value))
 
-faprotax_bar <- ggplot() + 
-    geom_col(faprotax_genera_l, mapping=aes(x=ENA_RUN, y=value ,fill=group)) +
+n_functions <- length(unique(faprotax_genera_l$group))
+okabe_ito_colors <- palette.colors(palette = "Okabe-Ito")   
+fill_colors <- colorRampPalette(okabe_ito_colors)(n_functions)
+
+faprotax_ratios_bar <- ggplot() + 
+    geom_col(faprotax_filtered, mapping=aes(x=ENA_RUN, y=value ,fill=group)) +
+    scale_fill_manual(values=fill_colors) +
     theme_bw()+
+    coord_flip()+
+    scale_y_continuous(expand = c(0, 0), name="")+
     theme(axis.text.x = element_text(face="bold",
-                                     size = 10,
-                                     angle = 90,
-                                     vjust = 1,
-                                     hjust=1)) +
-    theme(legend.position="top")
+                                     size = 15),
+          axis.ticks.y=element_blank(),axis.title=element_blank(),
+          axis.text.y=element_text(size=10, hjust=0, vjust=0)) +
+    theme(legend.position="bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(), #remove major gridlines
+            panel.grid.minor = element_blank())+
+    guides(fill=guide_legend(nrow=20,byrow=TRUE))
 
-
-ggsave("figures/faprotax_genera_bar.png",
-       plot=faprotax_bar,
+ggsave("figures/faprotax_ratios_bar.png",
+       plot=faprotax_ratios_bar,
        device="png",
-       height = 50,
-       width = 53,
+       height = 75,
+       width = 38,
+       units="cm")
+
+#### faprotax nitrogen related groups boxplot
+faprotax_nitr <- faprotax_genera_l |>
+    dplyr::filter(grepl("nitr",group)) |>
+    left_join(metadata, by=c("ENA_RUN"="ENA_RUN"))
+
+faprotax_nitr_box <- ggplot()+
+    geom_boxplot(faprotax_nitr,mapping=aes(x=total_nitrogen,y=group),outlier.shape = NA)+
+    geom_jitter(faprotax_nitr,
+                mapping=aes(x=total_nitrogen,y=group, size=value),
+                height = 0.1,
+                alpha=0.5, 
+                width = 0.0001,
+                stat="identity",
+                color="gray50")+
+#    scale_x_continuous(breaks=seq(0,0.5,0.1))+
+    xlab("Total nitrogen")+
+    theme_bw()+
+    guides(size=guide_legend(title="Relative abundance")) +
+    theme(legend.position = "bottom",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+
+ggsave("figures/faprotax_nitr_box.png",
+       plot=faprotax_nitr_box,
+       device="png",
+       height = 20,
+       width = 23,
        units="cm")
 
 
+####################### faprotax maps ########################
 faprotax_functions <- unique(faprotax_genera_l$group)
 
 for (fun in faprotax_functions){
@@ -1347,17 +1417,6 @@ for (fun in faprotax_functions){
            units="cm",
            device="png")
 }
-
-#phyla_samples_w <- phyla_samples_summary %>%
-#    pivot_wider(id_cols=ENA_RUN,
-#                names_from=Phylum,
-#                values_from=reads_srs_sum,
-#                values_fill=0) %>%
-#    as.data.frame() %>%
-#    column_to_rownames("ENA_RUN")
-
-
-
 
 
 print("all figures were generated")
