@@ -250,6 +250,7 @@ community_matrix_l <- crete_biodiversity %>%
     ungroup()
 
 write_delim(community_matrix_l,"results/community_matrix_l.tsv",delim="\t")
+#community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t") 
 
 community_matrix <- community_matrix_l %>%
     dplyr::select(ENA_RUN,reads_srs_sum,scientificName) %>%
@@ -384,8 +385,8 @@ print("taxonomic summary")
 ## the taxonomic levels
 
 taxonomy_taxa <- community_matrix_l %>%
-    distinct(higherClassification,scientificName) %>%
-    group_by(higherClassification) %>% summarise(n_taxa=n())
+    distinct(classification,scientificName) %>%
+    group_by(classification) %>% summarise(n_taxa=n())
 
 taxonomy_levels_occurrences <- community_matrix_l %>%
     group_by(classification) %>%
