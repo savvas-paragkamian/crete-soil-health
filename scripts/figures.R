@@ -1316,7 +1316,7 @@ dev.off()
 
 #adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
 
-adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*shannon*total_organic_carbon*carbon_nitrogen_ratio,
+adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*carbon_nitrogen_ratio,
                            data=metadata_f,
                            permutations=999)
 
@@ -1457,6 +1457,8 @@ ordination_sites_plot(ordination_sites,"location","NMDS1","NMDS2","nmds_site_loc
 
 boxplot_single(ordination_sites, "UMAP1", "LABEL2", "elevation_bin")
 boxplot_single(ordination_sites, "elevation_bin", "UMAP2", "elevation_bin")
+boxplot_single(ordination_sites, "UMAP1", "geology_na", "elevation_bin")
+boxplot_single(ordination_sites, "UMAP1", "LABEL3", "shannon")
 ordination_sites_plot(ordination_sites, "elevation_bin","UMAP1","UMAP2", "umap","elevation_bin")
 
 ######### plots genera ###########
