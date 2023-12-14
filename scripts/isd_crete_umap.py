@@ -37,7 +37,7 @@ def umap_function(array, df_ids, n_components,axis):
     
     np.random.seed(123)
     # umap function
-    embedding = umap.UMAP(n_neighbors=30,
+    embedding = umap.UMAP(n_neighbors=50,
                           min_dist=0.7,
                           n_components=n_components,
                           metric='braycurtis').fit_transform(array)
