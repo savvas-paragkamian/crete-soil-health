@@ -12,14 +12,11 @@
 ###############################################################################
 
 library(vegan)
-library(tidyverse)
-library(ggnewscale)
-library(ggpubr)
-library(pheatmap)
-library(sf)
-library(jpeg)
-library(raster)
-library(scales)
+#library(tidyverse)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
 
 ################################## functions ##################################
 # this function keeps the last occurrence of a string separated by |
@@ -28,8 +25,8 @@ keep_last <- function(x) tail(strsplit(x, split="; ")[[1]],1)
 ## transform a wide to long format
 dist_long <- function(x,method){
     method <- method
-    df <- as.data.frame(as.matrix(x)) %>%
-    rownames_to_column() %>%
+    df <- as.data.frame(as.matrix(x)) |>
+    rownames_to_column() |>
     pivot_longer(-rowname,
                  values_to=method,
                  names_to="colname")
