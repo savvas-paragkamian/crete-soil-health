@@ -158,7 +158,7 @@ metadata <- metadata_spatial %>%
     st_drop_geometry() %>% 
     dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark)) %>%
     mutate(elevation_bin=cut(elevation, 
-                             breaks=seq.int(from=0, to=2500, by=400),
+                             breaks=seq.int(from=0, to=2500, by=200),
                              dig.lab = 5 )) %>%
     mutate(protection_status = ifelse(is.na(SITETYPE) & is.na(DESIG_ENG), "none",
                                       ifelse(SITETYPE=="B" & is.na(DESIG_ENG),"Natura2000",
