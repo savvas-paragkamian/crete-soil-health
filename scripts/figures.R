@@ -1226,6 +1226,20 @@ png("figures/community_betadisper_geology.png",
 plot(mod.HSD)
 
 dev.off()
+
+# total nitrogen
+mod <- betadisper(bray, metadata_f$total_nitrogen,type="centroid")
+png("figures/community_betadisper_nitrogen_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
 # label2
 
 mod <- betadisper(bray, metadata_f$LABEL2,type="centroid")
@@ -1299,10 +1313,12 @@ dev.off()
 
 
 #### permanova
-adonis_geology <- adonis2(community_matrix ~ geology_na, data=metadata_f, permutations=99)
 
-adonis_label2 <- adonis2(community_matrix ~ LABEL2, data=metadata_f, permutations=99)
-adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
+#adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
+
+adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*shannon*total_organic_carbon*carbon_nitrogen_ratio,
+                           data=metadata_f,
+                           permutations=999)
 
 ##### difference between locations 
 ###
@@ -1407,13 +1423,24 @@ ordination_sites <- nmds_isd_sites %>%
 ordination_sites$elevation_bin <- factor(ordination_sites$elevation_bin,
                         levels=unique(ordination_sites$elevation_bin)[order(sort(unique(ordination_sites$elevation_bin)))])
 
-for (i in cats){
+# Categorical variables to plot against ordination
+cats <- c("vegetation_zone",
+          "LABEL1",
+          "LABEL2",
+          "LABEL3",
+          "elevation_bin",
+          "location",
+          "protection_status",
+          "geology_na")
 
-    if (is.character(ordination_sites[[i]]) & i!="ENA_RUN"){
+for (i in cats){
+    print(i)
+
+    if (!is.numeric(ordination_sites[[i]]) & i!="ENA_RUN"){
         print(i)
-        ordination_sites_plot(ordination_sites, i,"NMDS1","NMDS2", "nmds","UCIE")
-        ordination_sites_plot(ordination_sites, i,"UMAP1","UMAP2", "umap","UCIE")
-        ordination_sites_plot(ordination_sites, i,"Axis.1","Axis.2", "pcoa","UCIE")
+        ordination_sites_plot(ordination_sites, i,"NMDS1","NMDS2", "nmds",i)
+        ordination_sites_plot(ordination_sites, i,"UMAP1","UMAP2", "umap",i)
+        ordination_sites_plot(ordination_sites, i,"Axis.1","Axis.2", "pcoa",i)
 
     }else{
         next
