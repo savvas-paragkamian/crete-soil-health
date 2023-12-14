@@ -122,8 +122,7 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
     dataset <- as.data.frame(dataset)
     dataset$x_axis <- dataset[,x_axis]
     dataset$y_axis <- dataset[,y_axis]
-    dataset$grouping_var <- dataset[,grouping_var]
-
+    
     gradient <- ggplot(dataset, mapping=aes(x=x_axis, y=y_axis)) +
         geom_point()+
         xlab(x_lab)+
@@ -133,15 +132,28 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
               axis.text = element_text(size=13),
               axis.title.x=element_text(face="bold", size=13),
               axis.title.y=element_text(face="bold", size=13),
-              legend.position = c(0.88, 0.8)) +
-        facet_wrap(vars(grouping_var), scales = "free")
-   
-    ggsave(plotname,
-           plot=gradient,
-           device="png",
-           height = 20,
-           width = 23,
-           units="cm")
+              legend.position = c(0.88, 0.8))
+
+    if (grouping_var=="none"){
+
+        ggsave(plotname,
+               plot=gradient,
+               device="png",
+               height = 20,
+               width = 23,
+               units="cm")
+    }else{
+
+        dataset$grouping_var <- dataset[,grouping_var]
+        gradient2 <- gradient + facet_wrap(vars(dataset$grouping_var), scales = "free")
+
+        ggsave(plotname,
+               plot=gradient2,
+               device="png",
+               height = 20,
+               width = 23,
+               units="cm")
+    }
 }
 
 
