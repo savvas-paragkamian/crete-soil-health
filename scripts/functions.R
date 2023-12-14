@@ -21,6 +21,16 @@ library(ggplot2)
 ################################## functions ##################################
 # this function keeps the last occurrence of a string separated by |
 keep_last <- function(x) tail(strsplit(x, split="; ")[[1]],1)
+## create dir
+create_dir <- function(dir_name){
+
+    if (!dir.exists(dir_name)){
+    dir.create(dir_name)
+    print(paste0(dir_name, " directory created", sep=""))
+    } else{
+        print(paste0(dir_name, " directory exists", sep=""))
+    }
+}
 
 ## transform a wide to long format
 dist_long <- function(x,method){
@@ -125,6 +135,7 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
     
     gradient <- ggplot(dataset, mapping=aes(x=x_axis, y=y_axis)) +
         geom_point()+
+        geom_smooth(method = lm, show.legend=T)+
         xlab(x_lab)+
         ylab(y_lab) +
         theme_bw() +

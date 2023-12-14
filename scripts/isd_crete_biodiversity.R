@@ -42,6 +42,10 @@ library(vegan)
 library(SRS) # normalisation
 #library(ANCOMBC)
 
+#### set directory
+create_dir("results")
+create_dir("figures")
+
 ################################## Load data ##################################
 # Load data old repo
 #abundance_asv_old <- readRDS("Crete/all_runs_dada2_abundance_table.rds")
