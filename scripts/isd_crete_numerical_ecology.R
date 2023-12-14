@@ -53,14 +53,8 @@ print("samples with highest values of physicochemical properties")
 metadata %>% arrange(desc(total_nitrogen)) %>% head(n=2) # ERR3697708 , ERR3697732
 metadata %>% arrange(desc(total_organic_carbon)) %>% head(n=10) # ERR3697655, ERR3697675
 metadata %>% arrange(desc(water_content)) %>% head(n=2) ## ERR3697703, ERR3697702 
-####################### Destriptors Statistics ###############################
-print("descriptors stats")
-pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
-pw_e <- pairwise.wilcox.test(metadata$S.obs, metadata$elevation_bin, p.adjust.method="BH")
-pw_s <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL1, p.adjust.method="BH")
-pw_2 <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL2, p.adjust.method="BH")
-print(pw)
 
+################################# Metadata correlations #############################
 # correlations of diversity and other numerical metadata
 with(metadata, cor(shannon, water_content))
 
@@ -225,6 +219,175 @@ write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
 ############################# UMAP ############################
 # the python script isd_crete_umap.py
 # performs the UMAP algorithm
+################################# statistics ##########################
+
+umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
+#umap_isd_sites_k1 <- read_delim("results/umap_samples_1.tsv", delim="\t")
+#colnames(umap_isd_sites_k1) <- c("id", "UCIE")
+
+ordination_sites <- nmds_isd_sites %>%
+    left_join(umap_isd_sites, by=c("ENA_RUN"="id")) %>%
+    left_join(pcoa_bray_m) %>% 
+    left_join(metadata)
+#    left_join(umap_isd_sites_k1 ,by=c("ENA_RUN"="id"))
+ordination_sites$elevation_bin <- factor(ordination_sites$elevation_bin,
+                        levels=unique(ordination_sites$elevation_bin)[order(sort(unique(ordination_sites$elevation_bin)))])
+
+############################# Statistics ###############################
+##### regression
+cor.test(metadata$shannon, metadata$total_nitrogen)
+cor.test(metadata$shannon, metadata$carbon_nitrogen_ratio) 
+
+cor.test(metadata$shannon, metadata$elevation)
+cor.test(metadata$shannon, metadata$water_content) 
+####### Drivers
+
+pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
+pw_e <- pairwise.wilcox.test(metadata$S.obs, metadata$elevation_bin, p.adjust.method="BH")
+pw_s <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL1, p.adjust.method="BH")
+pw_2 <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL2, p.adjust.method="BH")
+print(pw)
+
+
+
+########### community dissimilarity tests #############
+community_matrix <- readRDS("results/community_matrix.RDS")
+
+metadata_f <- metadata |>
+    filter(ENA_RUN %in% rownames(community_matrix))
+
+# calculate the bray dissimilatiry
+bray <- vegdist(community_matrix)
+
+# geology
+
+# multivariate dispersion (variance) for a group of samples is to calculate
+# the average distance of group members to the group centroid or spatial
+# median (both referred to as 'centroid' from now on unless stated otherwise)
+# in multivariate space. 
+mod <- betadisper(bray, metadata_f$geology_na,type="centroid")
+png("figures/community_betadisper_geology_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+## test to see if there are any significant differences 
+anova(mod)
+### Pairwise comparisons of group mean dispersions can also be performed using
+### permutest.betadisper. An alternative to the classical comparison of group
+### dispersions, is to calculate Tukey's Honest Significant Differences between
+### groups, via TukeyHSD.betadisper. This is a simple wrapper to TukeyHSD. The
+### user is directed to read the help file for TukeyHSD before using this
+### function. In particular, note the statement about using the function with unbalanced designs.
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+
+png("figures/community_betadisper_geology.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+
+# total nitrogen
+mod <- betadisper(bray, metadata_f$total_nitrogen,type="centroid")
+png("figures/community_betadisper_nitrogen_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+# label2
+
+mod <- betadisper(bray, metadata_f$LABEL2,type="centroid")
+png("figures/community_betadisper_label2_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+png("figures/community_betadisper_label2.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+# label3
+
+mod <- betadisper(bray, metadata_f$LABEL3,type="centroid")
+png("figures/community_betadisper_label3_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+png("figures/community_betadisper_label3.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+#plot(mod.HSD)
+# elevation
+mod <- betadisper(bray, metadata_f$elevation_bin,type="centroid")
+
+png("figures/community_betadisper_elevation_box.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+boxplot(mod)
+dev.off()
+
+anova(mod)
+
+permutest(mod, pairwise = TRUE, permutations = 99)
+mod.HSD <- TukeyHSD(mod)
+png("figures/community_betadisper_elevation_bin.png",
+    res=300,
+    width=60,
+    height=40,
+    unit="cm")
+plot(mod.HSD)
+
+dev.off()
+
+
+#### permanova
+
+#adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
+
+adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*carbon_nitrogen_ratio,
+                           data=metadata_f,
+                           permutations=999)
+
+
 
 ############################## Community analysis ###########################
 ###################### Co-occurrence of samples and ASVs ####################
@@ -283,4 +446,5 @@ dissi_loc <- samples_locations %>%
               by=c("loc_1"="rowname", "loc_2"="colname"))
 
 summary(dissi_loc)
+
 print("finish")
