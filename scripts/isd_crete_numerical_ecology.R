@@ -274,6 +274,7 @@ cor.test(metadata$UMAP1, metadata$total_nitrogen)
 kruskal.test(UMAP1 ~ LABEL3, data = metadata)  
 kruskal.test(UMAP1 ~ geology_na, data = metadata)  
 
+boxplot_single(metadata, "UMAP1", "geology_na", "bio_1")
 # second axis
 lm_o2 <- lm(metadata$UMAP2 ~ metadata$total_organic_carbon + metadata$water_content)
 summary(lm_o2)
@@ -288,6 +289,7 @@ cor.test(metadata$UMAP2, metadata$water_content)
 gradient_scatterplot(metadata, "water_content","UMAP2", "none") 
 gradient_scatterplot(metadata, "total_nitrogen","UMAP2", "none") 
 gradient_scatterplot(metadata, "total_organic_carbon","UMAP2", "none") 
+boxplot_single(metadata, "UMAP2","LABEL3", "total_organic_carbon")
 ####### Drivers categorical
 kruskal.test(shannon ~ vegetation_zone, data = metadata)
 kruskal.test(shannon ~ elevation_bin, data = metadata)
@@ -429,7 +431,6 @@ dev.off()
 adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*carbon_nitrogen_ratio,
                            data=metadata,
                            permutations=999)
-
 
 
 ############################## Community analysis ###########################

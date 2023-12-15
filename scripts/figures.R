@@ -147,6 +147,7 @@ palette.colors(palette = "Okabe-Ito")
 # Crete figures
 cols=c("chocolate1","cornflowerblue","darkgoldenrod1", "darkolivegreen4", "darkorchid1", "goldenrod3", "palevioletred3", "peachpuff4", "turquoise","skyblue")
 
+print("1. Maps")
 print("printing base maps")
 crete_dem <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
@@ -521,6 +522,7 @@ ggsave("figures/map_bioclim12_percipitation.png",
        device="png")
 
 ################################# 2. Taxonomy #####################################
+print("2. Taxonomy")
 ## Phyla distribution, average relative abundance and ubiquity
 ## Biogeography of soil bacteria and archaea across France
 #phyla_samples_summary <- read_delim("results/phyla_samples_summary.tsv",delim="\t")
@@ -1024,6 +1026,7 @@ for (taxon in taxa_specialists$scientificName){
            device="png")
 }
 ##################### Community ecology #########################
+print("3. Community ecology")
 ##################### Sample Diversity boxplots #########################
 # Metadata to long format for diversity indices
 metadata_diversity <- metadata %>%
@@ -1358,35 +1361,11 @@ ggsave("figures/ordination_nmds_genera_plot_f.png",
        height = 50,
        width = 53,
        units="cm")
-#### umap
-umap_genera_plot <- ggplot() +
-    geom_point(data=nmds_isd_taxa,
-               mapping=aes(x=UMAP1, y=UMAP2,color=UCIE),show.legend = F) +
-    scale_color_manual(values=nmds_isd_taxa$UCIE)+
-    coord_equal() +
-    theme_bw()
-
-ggsave("figures/ordination_umap_genera_plot.png",
-       plot=umap_genera_plot,
-       device="png",
-       height = 20,
-       width = 23,
-       units="cm")
-
-umap_genera_plot_f <- umap_genera_plot + facet_wrap(vars(Phylum),
-                                                    scales="fixed")
-
-ggsave("figures/ordination_umap_genera_plot_f.png",
-       plot=umap_genera_plot_f,
-       device="png",
-       height = 50,
-       width = 53,
-       units="cm")
 
 
-
-############################## Functional profiles ############################
+############################## 4. Functional profiles ############################
 ### function
+print("4. Functional profiles")
 clr <- function(x, na.rm = FALSE) {
     log1p(x = x/(exp(x = sum(log1p(x = x[x > 0]), na.rm = TRUE)/length(x = x))))
 }
