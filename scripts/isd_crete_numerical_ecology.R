@@ -225,37 +225,80 @@ umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
 #umap_isd_sites_k1 <- read_delim("results/umap_samples_1.tsv", delim="\t")
 #colnames(umap_isd_sites_k1) <- c("id", "UCIE")
 
-ordination_sites <- nmds_isd_sites %>%
-    left_join(umap_isd_sites, by=c("ENA_RUN"="id")) %>%
-    left_join(pcoa_bray_m) %>% 
-    left_join(metadata)
+metadata <- metadata |>
+    left_join(umap_isd_sites, by=c("ENA_RUN"="id")) |>
+    left_join(pcoa_bray_m) |>
+    left_join(nmds_isd_sites)
 #    left_join(umap_isd_sites_k1 ,by=c("ENA_RUN"="id"))
-ordination_sites$elevation_bin <- factor(ordination_sites$elevation_bin,
-                        levels=unique(ordination_sites$elevation_bin)[order(sort(unique(ordination_sites$elevation_bin)))])
+metadata$elevation_bin <- factor(metadata$elevation_bin,
+                        levels=unique(metadata$elevation_bin)[order(sort(unique(metadata$elevation_bin)))])
 
 ############################# Statistics ###############################
 ##### regression
+## diversity
 cor.test(metadata$shannon, metadata$total_nitrogen)
 cor.test(metadata$shannon, metadata$carbon_nitrogen_ratio) 
 
 cor.test(metadata$shannon, metadata$elevation)
 cor.test(metadata$shannon, metadata$water_content) 
-####### Drivers
 
-pw <- pairwise.wilcox.test(metadata$S.obs, metadata$vegetation_zone, p.adjust.method="BH")
-pw_e <- pairwise.wilcox.test(metadata$S.obs, metadata$elevation_bin, p.adjust.method="BH")
-pw_s <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL1, p.adjust.method="BH")
-pw_2 <- pairwise.wilcox.test(metadata$shannon, metadata$LABEL2, p.adjust.method="BH")
-print(pw)
+gradient_scatterplot(metadata, "total_organic_carbon","shannon", "elevation_bin") 
 
+####### Drivers numerical
+cor.test(metadata$shannon, metadata$total_nitrogen)
+cor.test(metadata$shannon, metadata$total_organic_carbon)
+cor.test(metadata$shannon, metadata$carbon_nitrogen_ratio)
+cor.test(metadata$shannon, metadata$water_content)
+cor.test(metadata$shannon, metadata$elevation)
+cor.test(metadata$shannon, metadata$bio_1)
+cor.test(metadata$shannon, metadata$bio_12)
 
+cor.test(metadata$shannon, metadata$UMAP1)
+
+lm_s <- lm(metadata$shannon ~ metadata$bio_1 + metadata$geology_na+ metadata$total_organic_carbon)
+summary(lm_s)
+anova(lm_s)
+
+### drivers of major axis of ordination
+# first axis
+lm_o <- lm(metadata$UMAP1 ~ metadata$bio_1 + metadata$total_organic_carbon  + metadata$geology_na)
+summary(lm_o)
+anova(lm_o)
+cor.test(metadata$UMAP1, metadata$bio_1)
+gradient_scatterplot(metadata, "bio_1","UMAP1", "none") 
+gradient_scatterplot(metadata, "bio_12","UMAP1", "none") 
+gradient_scatterplot(metadata, "total_organic_carbon","UMAP1", "none") 
+cor.test(metadata$UMAP1, metadata$bio_12)
+cor.test(metadata$UMAP1, metadata$total_organic_carbon)
+cor.test(metadata$UMAP1, metadata$total_nitrogen)
+kruskal.test(UMAP1 ~ LABEL3, data = metadata)  
+kruskal.test(UMAP1 ~ geology_na, data = metadata)  
+
+# second axis
+lm_o2 <- lm(metadata$UMAP2 ~ metadata$total_organic_carbon + metadata$water_content)
+summary(lm_o2)
+anova(lm_o2)
+kruskal.test(UMAP2 ~ geology_na, data = metadata)
+kruskal.test(UMAP2 ~ elevation_bin, data = metadata)
+kruskal.test(UMAP2 ~ geology_na, data = metadata)
+kruskal.test(UMAP2 ~ LABEL3, data = metadata)  
+cor.test(metadata$UMAP2, metadata$total_organic_carbon)
+cor.test(metadata$UMAP2, metadata$total_nitrogen)
+cor.test(metadata$UMAP2, metadata$water_content)
+gradient_scatterplot(metadata, "water_content","UMAP2", "none") 
+gradient_scatterplot(metadata, "total_nitrogen","UMAP2", "none") 
+gradient_scatterplot(metadata, "total_organic_carbon","UMAP2", "none") 
+####### Drivers categorical
+kruskal.test(shannon ~ vegetation_zone, data = metadata)
+kruskal.test(shannon ~ elevation_bin, data = metadata)
+kruskal.test(shannon ~ LABEL2, data = metadata)
+kruskal.test(shannon ~ LABEL3, data = metadata)
+pairwise.wilcox.test(metadata$shannon, metadata$LABEL3, p.adjust.method="BH")
+
+kruskal.test(shannon ~ geology_na, data = metadata)
+pairwise.wilcox.test(metadata$shannon, metadata$geology_na, p.adjust.method="BH")
 
 ########### community dissimilarity tests #############
-community_matrix <- readRDS("results/community_matrix.RDS")
-
-metadata_f <- metadata |>
-    filter(ENA_RUN %in% rownames(community_matrix))
-
 # calculate the bray dissimilatiry
 bray <- vegdist(community_matrix)
 
@@ -265,7 +308,7 @@ bray <- vegdist(community_matrix)
 # the average distance of group members to the group centroid or spatial
 # median (both referred to as 'centroid' from now on unless stated otherwise)
 # in multivariate space. 
-mod <- betadisper(bray, metadata_f$geology_na,type="centroid")
+mod <- betadisper(bray, metadata$geology_na,type="centroid")
 png("figures/community_betadisper_geology_box.png",
     res=300,
     width=60,
@@ -295,7 +338,7 @@ plot(mod.HSD)
 dev.off()
 
 # total nitrogen
-mod <- betadisper(bray, metadata_f$total_nitrogen,type="centroid")
+mod <- betadisper(bray, metadata$total_nitrogen,type="centroid")
 png("figures/community_betadisper_nitrogen_box.png",
     res=300,
     width=60,
@@ -309,7 +352,7 @@ anova(mod)
 permutest(mod, pairwise = TRUE, permutations = 99)
 # label2
 
-mod <- betadisper(bray, metadata_f$LABEL2,type="centroid")
+mod <- betadisper(bray, metadata$LABEL2,type="centroid")
 png("figures/community_betadisper_label2_box.png",
     res=300,
     width=60,
@@ -332,7 +375,7 @@ plot(mod.HSD)
 dev.off()
 # label3
 
-mod <- betadisper(bray, metadata_f$LABEL3,type="centroid")
+mod <- betadisper(bray, metadata$LABEL3,type="centroid")
 png("figures/community_betadisper_label3_box.png",
     res=300,
     width=60,
@@ -355,7 +398,7 @@ plot(mod.HSD)
 dev.off()
 #plot(mod.HSD)
 # elevation
-mod <- betadisper(bray, metadata_f$elevation_bin,type="centroid")
+mod <- betadisper(bray, metadata$elevation_bin,type="centroid")
 
 png("figures/community_betadisper_elevation_box.png",
     res=300,
@@ -384,7 +427,7 @@ dev.off()
 #adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
 
 adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*carbon_nitrogen_ratio,
-                           data=metadata_f,
+                           data=metadata,
                            permutations=999)
 
 
