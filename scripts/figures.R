@@ -1137,6 +1137,7 @@ sample_cooccur_l <- read_delim("results/sample_cooccur_l.tsv", delim="\t") |>
 elevation_difference_g <- ggplot() +
     geom_point(sample_cooccur_l,
                mapping=aes(x=elevation_difference, y=bray)) +
+    geom_smooth(method = lm, show.legend=T)+
 #    scale_color_manual(values=c("generalists"="#1370A1",
 #                                "no classification"="#999999",
 #                                "specialists"="#AE6120"),
@@ -1161,6 +1162,7 @@ ggsave("figures/community_dissimilarity_elevation_difference.png",
 nitrogen_difference_g <- ggplot() +
     geom_point(sample_cooccur_l,
                mapping=aes(x=nitrogen_difference, y=bray)) +
+    geom_smooth(method = lm, show.legend=T)+
 #    scale_color_manual(values=c("generalists"="#1370A1",
 #                                "no classification"="#999999",
 #                                "specialists"="#AE6120"),
@@ -1329,8 +1331,9 @@ gradient_scatterplot(ordination_sites,"UMAP1", "shannon", "none")
 
 nmds_isd_taxa <- read_delim("results/nmds_isd_taxa.tsv", delim="\t")
 nmds_isd_taxa_ucie <- read_delim("results/nmds_isd_taxa_ucie.tsv", delim="\t")
-umap_isd_genera <- read_delim("results/umap_genera_2.tsv", delim="\t")
-nmds_isd_taxa <- nmds_isd_taxa %>% left_join(nmds_isd_taxa_ucie) %>% left_join(umap_isd_genera, by=c("scientificName"="id"))
+nmds_isd_taxa <- nmds_isd_taxa |>
+    left_join(nmds_isd_taxa_ucie) |>
+    left_join(umap_isd_sites, by=c("scientificName"="id"))
 
 nmds_genera_plot <- ggplot() +
     geom_point(data=nmds_isd_taxa,
