@@ -122,9 +122,11 @@ gradient_scatterplot <- function(dataset, x_axis, y_axis, grouping_var){
     ## keep the character names of column names to pass to plot
     ##
     plotname <- paste0("figures/",
-                       grouping_var,
+                       y_axis,
                        "_",
                        x_axis,
+                       "_",
+                       grouping_var,
                        "_gradient.png")
     x_lab <- x_axis
     y_lab <- y_axis
