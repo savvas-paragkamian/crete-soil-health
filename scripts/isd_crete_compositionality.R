@@ -9,7 +9,8 @@
 # the ANCOMBC methodology
 #
 ###############################################################################
-# OUTPUT: NOT WORKING!!!
+# 75 in minutes
+# OUTPUT: RDS files of each run
 ###############################################################################
 # usage:./scripts/isd_crete_compositionality.R
 ###############################################################################
@@ -23,10 +24,10 @@ library(mia)
 library(ANCOMBC)
 library(phyloseq)
 
-set.seed(123)
 community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t") 
 community_matrix <- readRDS("results/community_matrix.RDS") |> as.matrix() |> t()
 tax_tab <- readRDS("results/tax_tab.RDS")
+results <- readRDS("results/ancombc2_results.RDS")
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
 tax_tab1 <- community_matrix_l %>%
@@ -36,7 +37,7 @@ tax_tab1 <- community_matrix_l %>%
 tax_tab <- tax_tab1[,-1]
 rownames(tax_tab) <- tax_tab1[,1]
 
-metadata <- metadata %>% filter(ENA_RUN %in% rownames(community_matrix))
+metadata <- metadata %>% filter(ENA_RUN %in% colnames(community_matrix))
 # ancombc analysis
 
 assays = S4Vectors::SimpleList(counts = community_matrix)
@@ -52,7 +53,7 @@ tse = TreeSummarizedExperiment::TreeSummarizedExperiment(assays = assays, colDat
 set.seed(123)
 
 output = ancombc2(data = tse, assay_name = "counts", tax_level = NULL,
-                  fix_formula = "LABEL3 + elevation_bin", rand_formula = NULL,
+                  fix_formula = "LABEL2 + elevation_bin", rand_formula = NULL,
                   p_adj_method = "holm", pseudo_sens = TRUE,
                   prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
                   group = "LABEL3", struc_zero = FALSE, neg_lb = FALSE,
@@ -71,3 +72,21 @@ saveRDS(output, "results/ancombc2_results.RDS")
 res_prim = output$res
 res_pair = output$res_pair
 
+### geology
+
+output_geology = ancombc2(data = tse, assay_name = "counts", tax_level = NULL,
+                  fix_formula = "geology_na + total_nitrogen", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "geology_na", struc_zero = FALSE, neg_lb = FALSE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = FALSE, pairwise = TRUE, 
+                  dunnet = FALSE, trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, 
+                                      verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = NULL, 
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100), 
+                  trend_control = NULL)
+
+saveRDS(output_geology, "results/ancombc2_geology_results.RDS")
