@@ -52,7 +52,9 @@ tax_tab = S4Vectors::DataFrame(tax_tab)
 tse = TreeSummarizedExperiment::TreeSummarizedExperiment(assays = assays, colData = smd)
 set.seed(123)
 
-output = ancombc2(data = tse, assay_name = "counts", tax_level = NULL,
+print("Starting ancombc2 for Label2")
+
+output_label2 = ancombc2(data = tse, assay_name = "counts", tax_level = NULL,
                   fix_formula = "LABEL2 + elevation_bin", rand_formula = NULL,
                   p_adj_method = "holm", pseudo_sens = TRUE,
                   prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
@@ -67,12 +69,13 @@ output = ancombc2(data = tse, assay_name = "counts", tax_level = NULL,
                   mdfdr_control = list(fwer_ctrl_method = "holm", B = 100), 
                   trend_control = NULL)
 
-saveRDS(output, "results/ancombc2_results.RDS")
+saveRDS(output_label2, "results/ancombc2_results.RDS")
 
 res_prim = output$res
 res_pair = output$res_pair
 
 ### geology
+print("Starting ancombc2 for geology")
 
 output_geology = ancombc2(data = tse, assay_name = "counts", tax_level = NULL,
                   fix_formula = "geology_na + total_nitrogen", rand_formula = NULL,
