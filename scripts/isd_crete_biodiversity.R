@@ -347,13 +347,6 @@ write_delim(metadata_all,
 ########################## ASV summary ###############################
 print("ASV summary")
 # Create taxonomy table of the remaining asvs
-tax_tab1 <- crete_biodiversity %>%
-    distinct(asv_id, Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
-    as.matrix()
-
-tax_tab <- tax_tab1[,-1]
-rownames(tax_tab) <- tax_tab1[,1]
-saveRDS(tax_tab, "results/tax_tab.RDS")
 
 asv_stats <- crete_biodiversity %>% 
     group_by(asv_id, classification, scientificName) %>% 
@@ -383,6 +376,13 @@ asv_sample_dist <- asv_stats %>%
 
 
 ################################# Taxonomy #####################################
+tax_tab1 <- community_matrix_l %>%
+    distinct(scientificName, Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
+    as.matrix()
+
+tax_tab <- tax_tab1[,-1]
+rownames(tax_tab) <- tax_tab1[,1]
+saveRDS(tax_tab, "results/tax_tab.RDS")
 
 print("taxonomic summary")
 ## how the information of communities of Cretan soils is distributed across 
