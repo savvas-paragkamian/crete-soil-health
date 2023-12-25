@@ -101,13 +101,13 @@ cd FAPROTAX_1.2.7/
 
 ### transform all function tables to a single long table without zeros
 cd ../results/function_tables
-rm faprotax_all_long.tsv
+rm ../faprotax_all_long.tsv
 
 for f in *.txt ; 
 do  gawk -F"\t" 'BEGIN{print "taxonomy" "\t" "sample" "\t" "abundance" "\t" "FAPROTAX"} \
     (NR>1 && NR==2){split($0,sample,"\t")}(NR>2){sub("\\.txt","",FILENAME);split($0, data, "\t"); \
     for (i=2; i<=length(data); ++i){if (data[i]>0) \
-        {print data[1] "\t" sample[i-1] "\t" data[i] "\t" FILENAME}}}' $f >> faprotax_all_long.tsv
+        {print data[1] "\t" sample[i-1] "\t" data[i] "\t" FILENAME}}}' $f >> ../faprotax_all_long.tsv
 done
 
 echo "executing numerical ecology script"
