@@ -129,6 +129,11 @@ echo "create all the figures"
 
 ./script/figures.R
 
+######################### R packages used ################################
+#packages <- c("readxl","readr","ggplot2","scales","gridExtra","dplyr", "knitr", "tidyr","RColorBrewer","ggmap","rgdal","rgeos","maptools","tmap","Rcpp","sp","raster","broom")
+
+#write_bib(x = packages,file = "packages_used.bib")
+
 end=`date +%s`
 runtime=$((end-start))
 echo "Job ID: " $SLURM_JOB_ID
