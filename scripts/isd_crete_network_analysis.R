@@ -72,10 +72,13 @@ graph_motifs <- motifs(graph, 3)
 V(graph)$degree <- degree(graph)
 V(graph)$strength <- strength(graph)
 
-graph_tbl <- graph %>%
-    as_tbl_graph() %>%
-    activate(nodes) %>% 
-    left_join(genera_phyla_stats, by=c("label"="Genus"))
+graph_tbl <- graph |>
+    as_tbl_graph() |>
+    activate(nodes) |>
+    left_join(genera_phyla_stats, by=c("label"="Genus")) |>
+    activate(edges) |>
+    mutate(color=ifelse(sign == "positive", "green", "red"))
+
 
 ############################## plot #####################################
 E(graph)$color <- ifelse(E(graph)$sign == "positive", "green", "red")
@@ -99,17 +102,33 @@ dev.off()
 
 
 gg <- ggraph(graph_tbl, layout = 'fr', weights=abs(weight)) + 
-  geom_edge_link(aes(color=color)) + 
-  geom_node_point(mapping=aes(colour=Phylum)) + 
-  scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
-  theme(legend.position = 'bottom') +
-  theme_bw()
+    geom_edge_link(aes(color=color)) + 
+    geom_node_point(mapping=aes(colour=Phylum, size=relative_abundance_mean)) + 
+    scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
+    theme(legend.position = 'bottom') +
+    theme_bw() +
+    theme(
+#        panel.background = element_rect(fill='transparent'), #transparent panel bg
+        panel.border = element_blank(),
+        plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+#        legend.background = element_rect(fill='transparent'), #transparent legend bg
+#        legend.box.background = element_rect(fill='transparent'), #transparent legend panel
+        line = element_blank(),
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        legend.text=element_text(size=8),
+        legend.title = element_text(size=8),
+        legend.position = "bottom")
+
 
 ggsave("figures/network_fr.png",
        plot=gg,
        device="png",
        height = 50,
        width = 53,
+       dpi = 300,
        units="cm")
 
 gg_circle <-  ggraph(graph_tbl, circular=T, weights=abs(weight)) + 
