@@ -268,6 +268,18 @@ ggsave("figures/map_fig1a.png",
        units="cm",
        device="png")
 
+crete_base_tr <- crete_base + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_routes_tr.png",
+       bg='transparent',
+       plot=crete_base_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
 ## Crete Corine
 
 colors_clc_label2_v <- c("Artificial, non-agricultural vegetated areas"="#000000",
@@ -330,6 +342,17 @@ ggsave("figures/map_fig1b.png",
        units="cm",
        device="png")
 
+crete_corine_tr <- crete_corine + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_corine_tr.png",
+       bg='transparent',
+       plot=crete_corine_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
 
 fig1 <- ggarrange(crete_blank,crete_base,crete_corine,
           labels = c("A", "B", "C"),
@@ -434,6 +457,18 @@ ggsave("figures/map_crete_geology.png",
        units="cm",
        device="png")
 
+crete_geology_tr <- crete_geology_plot + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_geology_tr.png",
+       bg='transparent',
+       plot=crete_geology_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
 ######################## Bioclimatic variables ##########################
 crete_bioclim1 <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
@@ -478,6 +513,18 @@ ggsave("figures/map_bioclim1_temp.png",
        units="cm",
        device="png")
 
+crete_bioclim1_tr <- crete_bioclim1 + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_bioclim1_tr.png",
+       bg='transparent',
+       plot=crete_bioclim1_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
 crete_bioclim12 <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(bioclim12_crete_df, mapping=aes(x=x, y=y, fill=crete_wc2.1_30s_bio_12))+
@@ -515,6 +562,18 @@ ggsave("figures/map_bioclim12_percipitation.tiff",
 
 ggsave("figures/map_bioclim12_percipitation.png",
        plot=crete_bioclim12,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+crete_bioclim12_tr <- crete_bioclim12 + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_bioclim12_tr.png",
+       bg='transparent',
+       plot=crete_bioclim12_tr,
        height = 10,
        width = 20,
        dpi = 300,
