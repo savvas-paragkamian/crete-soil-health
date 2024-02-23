@@ -40,7 +40,6 @@ library(readr)
 library(tidyr)
 library(vegan)
 library(SRS) # normalisation
-#library(ANCOMBC)
 
 #### set directory
 create_dir("results")
@@ -456,15 +455,31 @@ genera_phyla_stats <- genera_phyla_samples %>%
 write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
 
 ################################ save network format ############################
+community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t") 
 
-network_genera_community_matrix <- community_matrix_l %>%
+total_reads <- sum(community_matrix_l$reads_srs_sum)
+
+# filtering taxa that have more than 100 reads and appear to more than 5% of the
+# samples (n=7)
+community_matrix_l_net <- community_matrix_l |>
+    group_by(scientificName,classification,taxonomy) |> 
+    summarise(total_reads=sum(reads_srs_sum),
+              n_samples=n(),
+              .groups="keep") |>
+    filter(total_reads>100, n_samples>7)
+
+filtered_reads <- sum(community_matrix_l_net$total_reads)
+
+# crete a network community matrix
+network_community_matrix <- community_matrix_l |>
+    filter(scientificName %in% community_matrix_l_net$scientificName) |>
     pivot_wider(id_cols=c(ENA_RUN),
                 names_from=scientificName,
                 values_from=reads_srs_sum,
-                values_fill=0) %>%
+                values_fill=0) |>
     column_to_rownames("ENA_RUN")
 
-write_delim(network_genera_community_matrix,"results/network_genera_community_matrix.tsv",delim="\t")
+write_delim(network_community_matrix,"results/network_community_matrix.tsv",delim="\t")
 
 ##################################################################################
 
