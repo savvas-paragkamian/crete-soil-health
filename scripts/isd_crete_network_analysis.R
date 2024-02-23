@@ -26,20 +26,18 @@ library(tidygraph)
 library(ggraph)
 
 ############################### load data #####################################
-genera_phyla_stats <- read_delim("results/genera_phyla_stats.tsv", delim="\t") %>% dplyr::select(-reads_srs_sd)
-graph <- read_graph("results/network_output.gml", format="gml")
+network_taxa_metadata <- read_delim("results/network_taxa_metadata.tsv", delim="\t")# %>% dplyr::select(-reads_srs_sd)
+graph <- igraph::read_graph("results/network_output.gml", format="gml")
 
-genera_phyla_stats_g <- genera_phyla_stats %>% dplyr::filter(Genus %in% V(graph)$label)
-
-for (attrib in colnames(genera_phyla_stats)){
-    print(attrib)
-    set_vertex_attr(graph,
-                    var,
-                    value=genera_phyla_stats[,attrib])
-
-}
+#for (attrib in colnames(network_taxa_metadata)){
+#    print(attrib)
+#    graph <- graph |> set_vertex_attr(as.character(attrib),
+#                    value=network_taxa_metadata[,attrib])
+#
+#}
 
 E(graph)$sign <- ifelse(E(graph)$weight > 0, "positive", "negative")
+E(graph)$color <- ifelse(E(graph)$sign == "positive", "green", "red")
 
 
 graph_positive <- graph
@@ -67,7 +65,7 @@ graph_motifs <- motifs(graph, 3)
 
 
 
-##############as_tbl_graph#################### Centralities ###############################
+########################### Centralities ###############################
 
 V(graph)$degree <- degree(graph)
 V(graph)$strength <- strength(graph)
@@ -75,15 +73,11 @@ V(graph)$strength <- strength(graph)
 graph_tbl <- graph |>
     as_tbl_graph() |>
     activate(nodes) |>
-    left_join(genera_phyla_stats, by=c("label"="Genus")) |>
-    activate(edges) |>
-    mutate(color=ifelse(sign == "positive", "green", "red"))
-
+    left_join(network_taxa_metadata, by=c("label"="asv_id")) 
 
 ############################## plot #####################################
-E(graph)$color <- ifelse(E(graph)$sign == "positive", "green", "red")
 
-png(file="figures/network_genera_sign.png",
+png(file="figures/network_asv_sign.png",
     width = 50,
     height = 30,
     res=300,
@@ -103,7 +97,7 @@ dev.off()
 
 gg <- ggraph(graph_tbl, layout = 'fr', weights=abs(weight)) + 
     geom_edge_link(aes(color=color)) + 
-    geom_node_point(mapping=aes(colour=Phylum, size=relative_abundance_mean)) + 
+    geom_node_point(mapping=aes(colour=Phylum, size=degree)) + 
     scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
     theme(legend.position = 'bottom') +
     theme_bw() +

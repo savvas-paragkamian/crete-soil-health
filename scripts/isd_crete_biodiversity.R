@@ -455,27 +455,38 @@ genera_phyla_stats <- genera_phyla_samples %>%
 write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
 
 ################################ save network format ############################
-community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t") 
+#community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t") 
+#crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
 
-total_reads <- sum(community_matrix_l$reads_srs_sum)
+total_reads <- sum(crete_biodiversity$abundance)
 
 # filtering taxa that have more than 100 reads and appear to more than 5% of the
 # samples (n=7)
-community_matrix_l_net <- community_matrix_l |>
-    group_by(scientificName,classification,taxonomy) |> 
-    summarise(total_reads=sum(reads_srs_sum),
-              n_samples=n(),
+network_taxa_metadata <- crete_biodiversity |>
+    filter(srs_abundance>0,
+           !is.na(srs_abundance),
+           !is.na(Phylum)) |>
+    group_by(asv_id, Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification,taxonomy) |>
+    summarise(n_samples=n(),
+              total_srs_reads=sum(srs_abundance),
+              total_reads=sum(abundance),
               .groups="keep") |>
-    filter(total_reads>100, n_samples>7)
+    filter(total_reads>=quantile(total_reads,0.20), n_samples>2) |>
+    ungroup()
 
-filtered_reads <- sum(community_matrix_l_net$total_reads)
+filtered_reads <- sum(network_taxa_metadata$total_reads)
+write_delim(network_taxa_metadata, "results/network_taxa_metadata.tsv", delim="\t")
 
 # crete a network community matrix
-network_community_matrix <- community_matrix_l |>
-    filter(scientificName %in% community_matrix_l_net$scientificName) |>
+network_community_matrix <- crete_biodiversity |>
+    filter(srs_abundance>0,
+           !is.na(srs_abundance),
+           !is.na(Phylum)) |>
+    group_by(ENA_RUN, asv_id, abundance) |>
+    filter(asv_id %in% network_taxa_metadata$asv_id) |>
     pivot_wider(id_cols=c(ENA_RUN),
-                names_from=scientificName,
-                values_from=reads_srs_sum,
+                names_from=asv_id,
+                values_from=abundance,
                 values_fill=0) |>
     column_to_rownames("ENA_RUN")
 
