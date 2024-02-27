@@ -335,9 +335,10 @@ crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_
 
 ## keep only the sample metadata after filtering
 ## filter also metadata and taxonomy
-metadata_all <-  metadata %>%
-    left_join(biodiversity_index, by=c("ENA_RUN"="ENA_RUN")) %>%
-    left_join(sample_stats_total, by=c("ENA_RUN"="ENA_RUN"))
+metadata_all <-  metadata |>
+    left_join(biodiversity_index, by=c("ENA_RUN"="ENA_RUN")) |>
+    left_join(sample_stats_total, by=c("ENA_RUN"="ENA_RUN")) |>
+    filter(ENA_RUN %in% unique(community_matrix_l$ENA_RUN))
 
 write_delim(metadata_all,
             "results/sample_metadata.tsv",
@@ -347,31 +348,47 @@ write_delim(metadata_all,
 print("ASV summary")
 # Create taxonomy table of the remaining asvs
 
-asv_stats <- crete_biodiversity %>% 
-    group_by(asv_id, classification, scientificName) %>% 
+asv_metadata <- crete_biodiversity %>%
+    filter(srs_abundance>0,
+           !is.na(srs_abundance),
+           !is.na(Phylum)) %>%
+    group_by(ENA_RUN) |>
+    mutate(relative_srs=srs_abundance/sum(srs_abundance)) %>%
+    group_by(asv_id, Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification,taxonomy) %>%
     summarise(n_samples=n(),
-              reads=sum(abundance),
-              reads_srs=sum(srs_abundance, na.rm=T),
-              reads_srs_mean=mean(srs_abundance, na.rm=T),
-              reads_srs_sd=sd(srs_abundance, na.rm=T),
-              .groups="keep") %>%
-    dplyr::ungroup()
+              proportion_samples=n_samples/total_samples,
+              mean_abundance=mean(abundance),
+              total_reads=sum(abundance),
+              mean_rel_abundance=mean(relative_srs),
+              mean_reads_srs=mean(srs_abundance),
+              total_reads_srs=sum(srs_abundance), .groups="keep") |>
+    ungroup()
 
-write_delim(asv_stats,"results/asv_metadata.tsv",delim="\t")
+
+write_delim(asv_metadata,"results/asv_metadata.tsv",delim="\t")
 
 ## singletons
-singletons <- asv_stats %>% 
-    filter(reads==1) %>%
+singletons <- crete_biodiversity |>
+    group_by(asv_id) |>
+    summarise(total_reads=sum(abundance)) %>% 
+    filter(total_reads==1) %>%
     nrow()
 
 print(paste0("there are ",singletons," singletons asvs"))
 
+singletons_srs <- crete_biodiversity |>
+    group_by(asv_id) |>
+    summarise(total_reads=sum(srs_abundance)) %>% 
+    filter(total_reads==1) %>%
+    nrow()
+print(paste0("there are ",singletons_srs," singletons of SR asvs"))
+
 ## asv and samples distribution
-asv_sample_dist <- asv_stats %>%
+asv_sample_dist <- asv_metadata %>%
     group_by(n_samples) %>%
     summarise(n_asv=n(),
-              reads=sum(reads),
-              reads_srs=sum(reads_srs, na.rm=T))
+              reads=sum(total_reads),
+              reads_srs=sum(total_reads_srs, na.rm=T))
 
 
 ################################# Taxonomy #####################################
@@ -454,24 +471,32 @@ genera_phyla_stats <- genera_phyla_samples %>%
 
 write_delim(genera_phyla_stats,"results/genera_phyla_stats.tsv",delim="\t")
 
-################################ save network format ############################
+########################### Generalists and specialists ##################
+## Abundance (y axis) and occupancy (x axis) plot
+## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
 #community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t") 
 #crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+total_samples <- length(unique(community_matrix_l$ENA_RUN))
+
+taxa_sample_abundance <- community_matrix_l |>
+    group_by(classification, scientificName,Phylum) |>
+    summarise(n_samples=n(),
+              proportion_samples=n_samples/length(unique(community_matrix_l$ENA_RUN)),
+              mean_abundance=mean(reads_srs_sum),
+              mean_rel_abundance=mean(relative_srs),
+              sd_abundance=sd(reads_srs_sum),.groups="keep") |>
+    mutate(prevalence_class=ifelse(n_samples<10 & mean_rel_abundance>0.003,
+                                   "specialists",ifelse(n_samples>120, "generalists","no classification")))
+
+write_delim(taxa_sample_abundance,"results/taxonomy_prevalence_generalists.tsv",delim="\t")
+################################ save network format ############################
 
 total_reads <- sum(crete_biodiversity$abundance)
 
 # filtering taxa that have more than 100 reads and appear to more than 5% of the
 # samples (n=7)
-network_taxa_metadata <- crete_biodiversity |>
-    filter(srs_abundance>0,
-           !is.na(srs_abundance),
-           !is.na(Phylum)) |>
-    group_by(asv_id, Kingdom,Phylum,Class,Order,Family,Genus,Species,scientificName,classification,taxonomy) |>
-    summarise(n_samples=n(),
-              total_srs_reads=sum(srs_abundance),
-              total_reads=sum(abundance),
-              .groups="keep") |>
-    filter(total_reads>=quantile(total_reads,0.20), n_samples>2) |>
+network_taxa_metadata <- asv_metadata |>
+    filter(total_reads_srs>=50) |>
     ungroup()
 
 filtered_reads <- sum(network_taxa_metadata$total_reads)
