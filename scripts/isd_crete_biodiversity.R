@@ -496,7 +496,9 @@ total_reads <- sum(crete_biodiversity$abundance)
 # filtering taxa that have more than 100 reads and appear to more than 5% of the
 # samples (n=7)
 network_taxa_metadata <- asv_metadata |>
-    filter(total_reads_srs>=50) |>
+    mutate(prevalence_class=ifelse(n_samples>1 & mean_rel_abundance>(-0.01*proportion_samples+0.001),
+                                   "prevalent", "no prevalent")) |>
+    filter(prevalence_class=="prevalent") |>
     ungroup()
 
 filtered_reads <- sum(network_taxa_metadata$total_reads)
