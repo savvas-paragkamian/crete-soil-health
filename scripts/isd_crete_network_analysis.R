@@ -15,6 +15,7 @@
 # usage:./isd_crete_network_analysis.R
 ###############################################################################
 
+source("scripts/functions.R")
 library(igraph)
 library(tibble)
 library(readr)
@@ -24,8 +25,10 @@ library(dplyr)
 library(ggplot2)
 library(tidygraph)
 library(ggraph)
+library(pheatmap)
 
 ############################### load data #####################################
+community_matrix <- read_delim("results/network_community_matrix.tsv", delim="\t")
 network_taxa_metadata <- read_delim("results/network_taxa_metadata.tsv", delim="\t")# %>% dplyr::select(-reads_srs_sd)
 graph <- igraph::read_graph("results/network_output.gml", format="gml")
 
@@ -39,11 +42,24 @@ graph <- igraph::read_graph("results/network_output.gml", format="gml")
 E(graph)$sign <- ifelse(E(graph)$weight > 0, "positive", "negative")
 E(graph)$color <- ifelse(E(graph)$sign == "positive", "green", "red")
 
+taxa_cooccur <- cor(community_matrix, method="spearman")
+isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
+taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
 
-graph_positive <- graph
-E(graph_positive)$weight <- abs(E(graph)$weight)
+taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
+    filter(rowname!=colname) %>%
+    na.omit()
 
+png("figures/network_heatmap_spearman_taxa.png",
+    res=300,
+    width=70,
+    height=30,
+    unit="cm")
 
+pheatmap(taxa_cooccur,
+         color=colorRampPalette(c("white","skyblue", "palevioletred3"))(20))
+
+dev.off()
 ############################### graph metrics #################################
 is.connected(graph)
 igraph::is.directed(graph)
@@ -62,7 +78,6 @@ average.path.length(graph_positive)
 
 ############################### subgraph metrics ####################### 
 graph_motifs <- motifs(graph, 3)
-
 
 
 ########################### Centralities ###############################
