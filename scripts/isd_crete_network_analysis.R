@@ -44,7 +44,7 @@ E(graph)$color <- ifelse(E(graph)$sign == "positive", "green", "red")
 
 taxa_cooccur <- cor(community_matrix, method="spearman")
 isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
-taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
+#taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
 
 taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
     filter(rowname!=colname) %>%
@@ -75,7 +75,6 @@ reciprocity(graph)
 diameter(graph_positive)
 
 average.path.length(graph_positive)
-
 ############################### subgraph metrics ####################### 
 graph_motifs <- motifs(graph, 3)
 
@@ -84,12 +83,24 @@ graph_motifs <- motifs(graph, 3)
 
 V(graph)$degree <- degree(graph)
 V(graph)$strength <- strength(graph)
+V(graph)$betweenness <- igraph::betweenness(graph,weights = NA,directed = TRUE)
+V(graph)$closeness_all <- igraph::closeness(graph,weights = NA, mode = "all")
+V(graph)$transitivity_l <- igraph::transitivity(graph,type = "local",weights = NA)
+V(graph)$transitivity_g <- igraph::transitivity(graph,type = "global",weights = NA)
 
 graph_tbl <- graph |>
     as_tbl_graph() |>
     activate(nodes) |>
-    left_join(network_taxa_metadata, by=c("label"="asv_id")) 
+    left_join(network_taxa_metadata, by=c("label"="asv_id")) |>
+    activate(edges) |>
+    mutate(weight_original = weight) |>
+    mutate(weight = abs(weight))
 
+####################### clustering ###########################
+graph_info <- cluster_infomap(graph_tbl)
+graph_louvain <- cluster_louvain(graph_tbl)
+
+V(graph_tbl)$louvain <- membership(graph_louvain)
 ############################## plot #####################################
 
 png(file="figures/network_asv_sign.png",
@@ -99,13 +110,13 @@ png(file="figures/network_asv_sign.png",
     units = "cm",
     bg="white")
 
-plot(graph, layout=layout_in_circle,
+plot(graph_tbl, layout=layout_in_circle,
      vertex.label=NA,
-     vertex.size=V(graph)$degree/10,
-     edge.color=E(graph)$color,
-     edge.size=abs(E(graph)$weight)/100,
-     vertex.frame.color="coral2",
-     vertex.color="coral2",
+     vertex.size=V(graph_tbl)$degree/10,
+     edge.color=E(graph_tbl)$color,
+     edge.size=0.001,
+     vertex.frame.color=V(graph_tbl)$louvain,
+     vertex.color=V(graph_tbl)$louvain,
      main = "Crete soil microbial interactome")
 dev.off()
 
@@ -140,7 +151,7 @@ ggsave("figures/network_fr.png",
        dpi = 300,
        units="cm")
 
-gg_circle <-  ggraph(graph_tbl, circular=T, weights=abs(weight)) + 
+gg_circle <-  ggraph(graph_tbl, circular=T) + 
   geom_edge_link(aes(color=color)) + 
   geom_node_point(mapping=aes(colour=Phylum)) + 
   scale_edge_color_manual(values=c("red"="palevioletred3", "green"="darkolivegreen4"))+
