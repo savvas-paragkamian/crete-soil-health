@@ -983,6 +983,43 @@ ggsave("figures/taxonomy_prevalence_genera_facet.png",
 ########################### Generalists and specialists ##################
 ## Abundance (y axis) and occupancy (x axis) plot
 ## similar to Using network analysis to explore co-occurrence patterns in soil microbial communities
+total_samples <- length(unique(community_matrix_l$ENA_RUN))
+
+asv_sample_prevalence <- asv_metadata |>
+    mutate(prevalence_class=ifelse(n_samples>1 & mean_rel_abundance>(-0.01*proportion_samples+0.001), "prevalent", "no prevalent")) |>
+    ungroup()
+
+asv_stat_sample <- ggplot() +
+    geom_point(asv_sample_prevalence,
+               mapping=aes(x=proportion_samples, y=mean_rel_abundance, color=prevalence_class)) +
+#    geom_errorbar(taxa_sample_abundance,
+#                  mapping=aes(x=n_samples,
+#                              y=,
+#                              ymin=mean_abundance-sd_abundance,
+#                              ymax=mean_abundance+sd_abundance,
+#                              alpha=0.5))+
+    scale_color_manual(values=c("prevalent"="#1370A1",
+                                "no prevalent"="#999999"),
+                       name="ASV Prevalence")+
+    #scale_x_continuous(breaks=seq(0,150,10), name="Number of samples") +
+    #coord_fixed(ratio = 1)+
+    xlab("Samples proportion")+
+    scale_y_continuous(trans='log10', name = "Mean relative abundance",
+                     breaks=trans_breaks('log10', function(x) 10^x),
+                     labels=trans_format('log10', math_format(10^.x))) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size=13),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          legend.position = c(0.75, 0.08))
+
+ggsave("figures/taxonomy_prevalence_asv_specialists_generalists.png",
+       plot=asv_stat_sample,
+       device="png",
+       height = 20,
+       width = 10,
+       units="cm")
 
 taxa_sample_abundance <- community_matrix_l |>
     group_by(scientificName,Phylum) |>
