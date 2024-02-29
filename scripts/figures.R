@@ -828,6 +828,13 @@ ggsave("figures/taxonomy_representative_phyla_box.png",
        width = 23,
        units="cm")
 
+ggsave("figures/taxonomy_representative_phyla_box_short.png",
+       plot=phyla_box,
+       device="png",
+       height = 20,
+       width = 15,
+       units="cm")
+
 
 ############################ Heatmap distribution Phyla Samples ############################
 phyla_samples_w_z <- phyla_samples_summary %>%
@@ -986,7 +993,7 @@ ggsave("figures/taxonomy_prevalence_genera_facet.png",
 total_samples <- length(unique(community_matrix_l$ENA_RUN))
 
 asv_sample_prevalence <- asv_metadata |>
-    mutate(prevalence_class=ifelse(n_samples>1 & mean_rel_abundance>(-0.01*proportion_samples+0.001), "prevalent", "no prevalent")) |>
+    mutate(prevalence_class=ifelse(n_samples>2 & mean_rel_abundance>(-0.01*proportion_samples+0.001), "prevalent", "no prevalent")) |>
     ungroup()
 
 asv_stat_sample <- ggplot() +
@@ -1054,13 +1061,20 @@ taxa_stat_sample <- ggplot() +
           axis.text = element_text(size=13),
           axis.title.x=element_text(face="bold", size=13),
           axis.title.y=element_text(face="bold", size=13),
-          legend.position = c(0.9, 0.08))
+          legend.position = c(0.8, 0.08))
 
 ggsave("figures/taxonomy_prevalence_specialists_generalists.png",
        plot=taxa_stat_sample,
        device="png",
        height = 20,
        width = 23,
+       units="cm")
+
+ggsave("figures/taxonomy_prevalence_specialists_generalists_short.png",
+       plot=taxa_stat_sample,
+       device="png",
+       height = 20,
+       width = 10,
        units="cm")
 
 taxa_stat_sample_cla <- taxa_stat_sample + 
