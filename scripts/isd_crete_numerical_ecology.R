@@ -33,6 +33,7 @@ crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t"
 community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
 
 community_matrix <- readRDS("results/community_matrix.RDS")
+asv_metadata <- read_delim("results/asv_metadata.tsv", delim="\t")
 
 # Metadata
 
