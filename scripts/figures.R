@@ -98,6 +98,16 @@ bioclim12_crete <- raster("spatial_data/world_clim_crete/crete_wc2.1_30s_bio_12.
 bioclim12_crete_pixel <- as(bioclim12_crete, "SpatialPixelsDataFrame")
 bioclim12_crete_df <- as.data.frame(bioclim12_crete_pixel) 
 
+# raster global aridity index
+aridity_crete <- raster("spatial_data/crete_aridity_index.tif")
+aridity_crete[aridity_crete[] == 0 ] = NA
+aridity_crete_pixel <- as(aridity_crete, "SpatialPixelsDataFrame")
+aridity_crete_df <- as.data.frame(aridity_crete_pixel)
+aridity_crete_df$aridity <- aridity_crete_df$awi_pm_sr_yr*0.0001
+aridity_crete_df$aridity_class <- cut(aridity_crete_df$aridity,
+                                      breaks=c(0,0.03,0.2,0.5, 0.65,0.9),
+                                      labels=c("Hyper Arid", "Arid", "Semi-Arid", "Dry sub-humid", "Humid"))
+
 ####################### UCIE #########################
 # UCIE needs 3 axis of ordination
 print("starting UCIE")
@@ -580,6 +590,118 @@ ggsave("figures/map_crete_bioclim12_tr.png",
        units="cm",
        device="png")
 
+####### Crete aridity index map ######
+
+crete_aridity_g <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(aridity_crete_df, mapping=aes(x=x, y=y, fill=aridity))+
+    scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
+                                  title="Aridity index",
+                                  direction = "vertical",
+                                  title.vjust = 0.8),
+                        colours = c("tan1","darkolivegreen3", "deepskyblue"),
+                        breaks = c(0.25, 0.45, 0.6, 0.75),
+                        labels = c(0.25, 0.45, 0.6, 0.75),
+                        limits=c(0.25,0.79))+
+    coord_sf(crs="wgs84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=8),
+          legend.title = element_text(size=8),
+          legend.position = c(0.95,0.8),
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_aridity_index.tiff",
+       plot=crete_aridity_g,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_aridity_index.png",
+       plot=crete_aridity_g,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+crete_aridity_tr <- crete_aridity_g + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_aridity_index_tr.png",
+       bg='transparent',
+       plot=crete_aridity_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+# aridity classification
+colors_aridity_class_v <- c("Semi-Arid"="tan1",
+"Dry sub-humid"="darkolivegreen3",
+"Humid"="deepskyblue")
+
+crete_aridity_class <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(aridity_crete_df, mapping=aes(x=x, y=y, fill=aridity_class))+
+    scale_fill_manual(values = colors_aridity_class_v,
+                      guide = "legend") +
+    guides(fill = guide_legend(nrow=1,byrow=TRUE, override.aes = list(color = "transparent", alpha=1) ),
+           colour = guide_legend(override.aes = list(alpha=1, fill="transparent") ) )+
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_blank(),
+          legend.position = "bottom",
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_crete_aridity_class.tiff", 
+       plot=crete_aridity_class, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_aridity_class.png", 
+       plot=crete_aridity_class, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+crete_aridity_class_tr <- crete_aridity_class + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_aridity_class_tr.png",
+       bg='transparent',
+       plot=crete_aridity_class_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
 ################################# 2. Taxonomy #####################################
 print("2. Taxonomy")
 ## Phyla distribution, average relative abundance and ubiquity
@@ -697,7 +819,7 @@ ggsave("figures/taxonomy_ratios_phyla_samples.png",
        units="cm")
 
 ## phyla ratios and elevation
-categories <- c("elevation_bin", "geology_na", "LABEL2")
+categories <- c("elevation_bin", "geology_na", "LABEL2", "aridity_class")
 
 for (cat in categories){
 
@@ -1185,6 +1307,7 @@ vars <- c("latitude",
           "water_content",
           "carbon_nitrogen_ratio",
           "total_organic_carbon",
+          "aridity",
           "sample_volume_or_weight_for_DNA_extraction",
           "DNA_concentration",
           "route")
@@ -1222,6 +1345,7 @@ cats <- c("vegetation_zone",
           "LABEL1",
           "LABEL2",
           "LABEL3",
+          "aridity_class",
           "elevation_bin",
           "location",
           "protection_status",
