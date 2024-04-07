@@ -80,6 +80,7 @@ dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
+
 ## Global Aridity Index and Potential Evapotranspiration Database
 library(rSDM)
 
@@ -96,7 +97,7 @@ sf_aridity <- cbind(st_drop_geometry(metadata_aridity),df_corrected_coords) %>%
     st_as_sf(coords=c("longitude", "latitude"),
              remove=T,
              crs="WGS84")
-    # assign the variable to the initial file. The order of the rows is kept the same
+# assign the variable to the initial file. The order of the rows is kept the same
 metadata_aridity$aridity <- raster::extract(aridity_crete,sf_aridity, cellnumbers=F)  
 
 # tranform the values to the original form as instructed by the manual. 
@@ -105,6 +106,30 @@ metadata_aridity$aridity_class <- cut(metadata_aridity$aridity,
                                       breaks=c(0,0.03,0.2,0.5, 0.65,0.9),
                                       labels=c("Hyper Arid", "Arid", "Semi-Arid", "Dry sub-humid", "Humid"))
 
+## Desertification risk
+esa3rdp <- rast("spatial_data/ESDAC_CATENA_Desertification2018_RasterFiles/esa3rdp/w001001.adf")
+sta <- rast("spatial_data/ESDAC_CATENA_Desertification2018_RasterFiles/esa3rdp/sta.adf")
+vat <- rast("spatial_data/ESDAC_CATENA_Desertification2018_RasterFiles/esa3rdp/vat.adf")
+esa3rdp_wgs <- terra::project(esa3rdp, crs(metadata_aridity))
+
+esa3rdp_crete <- crop(esa3rdp_wgs, crete_shp)
+esa3rdp_attr <- data.frame(ESA=unique(esa3rdp_crete),
+                           ESA_id=seq(1,nrow(unique(esa3rdp_crete)),1))
+write_delim(esa3rdp_attr, "results/esa3rdp_crete.tsv", delim="\t")
+terra::writeRaster(esa3rdp_crete, "results/esa3rdp_crete.tif",overwrite=TRUE)
+esa3rdp_crete_r <- raster(esa3rdp_crete)
+
+check.coords <- points2nearestcell(locations_s, esa3rdp_crete_r)
+# merge the points move to closest valued cell
+df_corrected_coords <- as.data.frame(check.coords)
+sf_desertification <- cbind(st_drop_geometry(metadata_aridity),df_corrected_coords) %>% 
+    st_as_sf(coords=c("longitude", "latitude"),
+             remove=T,
+             crs="WGS84")
+# assign the variable to the initial file. The order of the rows is kept the same
+metadata_aridity$ESA_id <- raster::extract(esa3rdp_crete_r,sf_desertification, cellnumbers=F)  
+
+metadata_aridity <- metadata_aridity |> left_join(esa3rdp_attr, by=c("ESA_id"="ESA_id"))
 metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_aridity))
 
 ## world clim data enrichment
