@@ -108,6 +108,11 @@ aridity_crete_df$aridity_class <- cut(aridity_crete_df$aridity,
                                       breaks=c(0,0.03,0.2,0.5, 0.65,0.9),
                                       labels=c("Hyper Arid", "Arid", "Semi-Arid", "Dry sub-humid", "Humid"))
 
+# raster desertification and Environmental Sensitive Areas Index
+desertification_crete <- rast("spatial_data/crete_desertification_risk/esa3rdp_crete.tif")
+desertification_crete_cat <- read_delim("spatial_data/crete_desertification_risk/esa3rdp_crete.tsv", delim="\t")
+desertification_crete_df <- as.data.frame(desertification_crete,xy=T, cells=T)
+
 ####################### UCIE #########################
 # UCIE needs 3 axis of ordination
 print("starting UCIE")
@@ -696,6 +701,70 @@ crete_aridity_class_tr <- crete_aridity_class + theme(legend.position = "none",
 ggsave("figures/map_crete_aridity_class_tr.png",
        bg='transparent',
        plot=crete_aridity_class_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+## Desertification risk of Crete
+
+esai_class <- c("N"="darkgreen",
+                "F2"="darkolivegreen2",
+                "F1"="mediumseagreen",
+                "P"="green3",
+                "C2"="tomato",
+                "Other areas"="darkgrey",
+                "F3"="khaki1",
+                "C1"="tan1",
+                "C3"="red")
+
+
+crete_desertification_g <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(desertification_crete_df, mapping=aes(x=x, y=y, fill=ESA_12CL))+
+    scale_fill_manual(values = esai_class,
+                      guide = "legend") +
+    guides(fill = guide_legend(nrow=1,byrow=TRUE, override.aes = list(color = "transparent", alpha=1) ),
+           colour = guide_legend(override.aes = list(alpha=1, fill="transparent") ) )+
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_blank(),
+          legend.position = "bottom",
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_crete_desertification.tiff", 
+       plot=crete_desertification_g, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_crete_desertification.png", 
+       plot=crete_desertification_g, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+crete_desertification_tr <- crete_desertification_g + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_desertification_tr.png",
+       bg='transparent',
+       plot=crete_desertification_tr,
        height = 10,
        width = 20,
        dpi = 300,
