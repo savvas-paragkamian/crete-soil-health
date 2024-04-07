@@ -25,6 +25,7 @@ library(ggnewscale)
 library(ggpubr)
 library(jpeg)
 library(raster)
+library(terra)
 library(scales)
 
 
@@ -79,8 +80,34 @@ dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
 dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
 
-## world clim data enrichment
+## Global Aridity Index and Potential Evapotranspiration Database
 library(rSDM)
+
+aridity_crete <- raster("spatial_data/crete_aridity_index.tif")
+# some points have 0 value
+aridity_crete[aridity_crete[] == 0 ] = NA
+metadata_aridity <- metadata_spatial %>% dplyr::select(ENA_RUN) 
+locations_s <- locs2sp(do.call(rbind, st_geometry(metadata_aridity)))
+check.coords <- points2nearestcell(locations_s, aridity_crete)
+
+# merge the points move to closest valued cell
+df_corrected_coords <- as.data.frame(check.coords)
+sf_aridity <- cbind(st_drop_geometry(metadata_aridity),df_corrected_coords) %>% 
+    st_as_sf(coords=c("longitude", "latitude"),
+             remove=T,
+             crs="WGS84")
+    # assign the variable to the initial file. The order of the rows is kept the same
+metadata_aridity$aridity <- raster::extract(aridity_crete,sf_aridity, cellnumbers=F)  
+
+# tranform the values to the original form as instructed by the manual. 
+metadata_aridity$aridity <- metadata_aridity$aridity*0.0001
+metadata_aridity$aridity_class <- cut(metadata_aridity$aridity,
+                                      breaks=c(0,0.03,0.2,0.5, 0.65,0.9),
+                                      labels=c("Hyper Arid", "Arid", "Semi-Arid", "Dry sub-humid", "Humid"))
+
+metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_aridity))
+
+## world clim data enrichment
 raster_map <- function(raster_tmp,world_clim_variable,metadata_spatial, crete_shp){
     raster_pixel <- as(raster_tmp, "SpatialPixelsDataFrame")
     raster_df <- as.data.frame(raster_pixel)
