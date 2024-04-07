@@ -108,15 +108,13 @@ metadata_aridity$aridity_class <- cut(metadata_aridity$aridity,
 
 ## Desertification risk
 esa3rdp <- rast("spatial_data/ESDAC_CATENA_Desertification2018_RasterFiles/esa3rdp/w001001.adf")
-sta <- rast("spatial_data/ESDAC_CATENA_Desertification2018_RasterFiles/esa3rdp/sta.adf")
-vat <- rast("spatial_data/ESDAC_CATENA_Desertification2018_RasterFiles/esa3rdp/vat.adf")
 esa3rdp_wgs <- terra::project(esa3rdp, crs(metadata_aridity))
 
 esa3rdp_crete <- crop(esa3rdp_wgs, crete_shp)
 esa3rdp_attr <- data.frame(ESA=unique(esa3rdp_crete),
                            ESA_id=seq(1,nrow(unique(esa3rdp_crete)),1))
-write_delim(esa3rdp_attr, "results/esa3rdp_crete.tsv", delim="\t")
-terra::writeRaster(esa3rdp_crete, "results/esa3rdp_crete.tif",overwrite=TRUE)
+write_delim(esa3rdp_attr, "spatial_data/crete_desertification_risk/esa3rdp_crete.tsv", delim="\t")
+terra::writeRaster(esa3rdp_crete, "spatial_data/crete_desertification_risk/esa3rdp_crete.tif",overwrite=TRUE)
 esa3rdp_crete_r <- raster(esa3rdp_crete)
 
 check.coords <- points2nearestcell(locations_s, esa3rdp_crete_r)
