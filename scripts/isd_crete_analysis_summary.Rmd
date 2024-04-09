@@ -1,0 +1,188 @@
+---
+title: "Crete soil soil microbiome summary"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load the data
+
+```{r, warning=FALSE, message=FALSE, echo=T, results='hide'}
+library(tidyverse)
+library(ggnewscale)
+library(sf)
+library(terra)
+library(knitr)
+library(kableExtra)
+source("functions.R")
+
+```
+
+```{r, warning=FALSE, message=FALSE, echo=T, results='hide'}
+
+## biodiversity
+community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
+crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
+asv_metadata <- read_delim("results/asv_metadata.tsv",delim="\t")
+genera_phyla_samples <- read_delim("results/genera_phyla_samples.tsv",delim="\t")
+
+# Metadata
+metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
+
+metadata$elevation_bin <- factor(metadata$elevation_bin,
+                        levels=unique(metadata$elevation_bin)[order(sort(unique(metadata$elevation_bin)))])
+
+samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
+
+## spatial
+locations_spatial <- metadata %>%
+    st_as_sf(coords=c("longitude", "latitude"),
+             remove=F,
+             crs="WGS84")
+
+crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
+crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", col_names=T) %>%
+    st_as_sf(coords=c("X", "Y"),
+             remove=F,
+             crs="WGS84")
+
+clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
+crete_geology <- st_read("spatial_data/crete_geology/crete_geology.shp")
+natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
+wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
+    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG))
+
+natura_crete_land <- st_intersection(natura_crete, crete_shp)
+natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
+# raster DEM hangling
+dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
+dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
+dem_crete_df <- as.data.frame(dem_crete_pixel) %>% filter(dem_crete>0)
+# raster bioclim 1 Annual Mean Temperature
+bioclim1_crete <- raster("spatial_data/world_clim_crete/crete_wc2.1_30s_bio_1.tif")
+bioclim1_crete_pixel <- as(bioclim1_crete, "SpatialPixelsDataFrame")
+bioclim1_crete_df <- as.data.frame(bioclim1_crete_pixel) 
+
+# raster bioclim 12 Annual Mean Precipitation
+bioclim12_crete <- raster("spatial_data/world_clim_crete/crete_wc2.1_30s_bio_12.tif")
+bioclim12_crete_pixel <- as(bioclim12_crete, "SpatialPixelsDataFrame")
+bioclim12_crete_df <- as.data.frame(bioclim12_crete_pixel) 
+
+# raster global aridity index
+aridity_crete <- raster("spatial_data/crete_aridity_index.tif")
+aridity_crete[aridity_crete[] == 0 ] = NA
+aridity_crete_pixel <- as(aridity_crete, "SpatialPixelsDataFrame")
+aridity_crete_df <- as.data.frame(aridity_crete_pixel)
+aridity_crete_df$aridity <- aridity_crete_df$awi_pm_sr_yr*0.0001
+aridity_crete_df$aridity_class <- cut(aridity_crete_df$aridity,
+                                      breaks=c(0,0.03,0.2,0.5, 0.65,0.9),
+                                      labels=c("Hyper Arid", "Arid", "Semi-Arid", "Dry sub-humid", "Humid"))
+
+# raster desertification and Environmental Sensitive Areas Index
+desertification_crete <- rast("spatial_data/crete_desertification_risk/esa3rdp_crete.tif")
+desertification_crete_cat <- read_delim("spatial_data/crete_desertification_risk/esa3rdp_crete.tsv", delim="\t")
+desertification_crete_df <- as.data.frame(desertification_crete,xy=T, cells=T)
+
+```
+There are `r nrow(locations_shp)` occurrences of `r length(unique(locations_shp$scientificName))` 
+species that belong to `r length(unique(locations_shp$order))` orders.
+
+
+# Crete data cube maps
+Here are some maps of Crete with different layers.
+
+![ISD Crete sampling sites]("../figures/map_crete_blank.png")
+
+![Crete digital elevation model]("../figures/map_fig1a.png")
+
+![Corine Land Cover, EEA Copernicus]("../figures/map_fig1b.png")
+
+![Geology of Crete, EMERIC - CRINNO]("../figures/map_crete_geology.png")
+
+![Desertification from risk, ESDAC]("../figures/map_crete_crete_desertification.png")
+
+![Annual precipitation, WorldClim 2.0]("../figures/map_bio_12_crete.png")
+
+![Mean annual temperature, WorldClim 2.0]("../figures/map_bio_1_crete.png")
+
+![Global Aridity index v3 classes]("../figures/map_crete_aridity_class.png")
+
+
+# Table summary
+
+A summary table of each order.
+
+```{r}
+order_taxa <- endemic_species |> 
+    group_by(order) |>
+    summarise(taxa=n())
+
+order_sites <- locations_shp |>
+    distinct(order,decimalLatitude,decimalLongitude) |>
+    group_by(order) |>
+    summarise(sites=n())
+
+order_occ <- locations_shp |>
+    group_by(order) |>
+    summarise(occurrences=n()) |>
+    st_drop_geometry()
+
+order_locations <- locations_grid |> 
+    distinct(CELLCOD, order) |> 
+    group_by(order) |>
+    summarise(locations=n())
+
+order_iucn <- endemic_species_s_i |> 
+    pivot_wider(names_from=iucn,
+                values_from=c(n_species,proportion),
+                id_cols=order) |> 
+    group_by(order) |>
+    rowwise() |>
+    mutate(threatened=sum(n_species_EN,n_species_VU,n_species_CR,na.rm=TRUE),
+            proportion_threatened=threatened/sum(n_species_EN,n_species_VU,n_species_CR,`n_species_NT/LC`, na.rm=TRUE))
+
+order_paca <- endemic_species_s_o |> 
+    pivot_wider(names_from=paca,
+                values_from=c(n_species,proportion),
+                id_cols=order)
+
+order_total_l <- list(order_taxa,order_sites,order_occ,order_locations,order_iucn,order_paca)
+
+order_total <- order_total_l |> reduce(full_join, by="order")
+
+total_iucn <- endemic_species_i |> 
+    pivot_wider(names_from=iucn,
+                values_from=c(n_species,proportion)) |> 
+    dplyr::select(-method) |>
+    rowwise() |>
+    mutate(threatened=sum(n_species_EN,n_species_VU,n_species_CR,na.rm=TRUE),
+            proportion_threatened=threatened/sum(n_species_EN,n_species_VU,n_species_CR,`n_species_NT/LC`, na.rm=TRUE))
+
+total_paca <- endemic_species_p |> 
+    pivot_wider(names_from=paca,
+                values_from=c(n_species,proportion)) |>
+    dplyr::select(-method)
+
+
+total_data <- data.frame(order="total",
+                         taxa = length(unique(endemic_species$scientificName)),
+                         sites = nrow(unique(st_coordinates(locations_shp))),
+                         occurrences = nrow(locations_shp),
+                         locations = length(unique(locations_grid$CELLCOD)))
+
+total_row <- cbind(total_data, total_paca, total_iucn)
+
+total_summary <- rbind(total_row, order_total)
+write_delim(total_summary, "../results/total_summary.tsv", delim="\t")
+```
+
+```{r}
+
+kbl(total_summary) |> kable_styling(latex_options = "scale_down")
+```
