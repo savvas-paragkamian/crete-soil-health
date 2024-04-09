@@ -348,6 +348,7 @@ write_delim(metadata_all,
 print("ASV summary")
 # Create taxonomy table of the remaining asvs
 
+total_samples <- length(unique(community_matrix_l$ENA_RUN))
 asv_metadata <- crete_biodiversity %>%
     filter(srs_abundance>0,
            !is.na(srs_abundance),
