@@ -751,7 +751,7 @@ ggsave("figures/map_crete_desertification.tiff",
        units="cm",
        device="tiff")
 
-ggsave("figures/map_crete_crete_desertification.png", 
+ggsave("figures/map_crete_desertification.png", 
        plot=crete_desertification_g, 
        height = 10, 
        width = 20,
