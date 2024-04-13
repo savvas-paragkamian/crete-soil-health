@@ -117,6 +117,26 @@ Here are some maps of Crete with different layers.
 A summary table of each order.
 
 ```{r}
+# the number of samples per layer
+
+classes <- c("LABEL2", "geology_na", "ESA_12CL", "aridity_class" )
+
+classes_samples <- list()
+
+for (i in seq_along(classes)){
+    print(i)
+    classes_samples[[i]] <- metadata |> 
+        group_by(metadata[[classes[i]]]) |>
+        summarise(samples=n(),
+                  taxa_richness=sum(taxa),
+                  asv_richness=sum(asvs),
+                  mean_shannon=mean(shannon),
+                  sd_shannon=sd(shannon))
+}
+
+samples_total <- do.call(rbind, classes_samples) 
+colnames(samples_total)[1] <- c("class")
+
 # the area of different layers in Crete
 clc_label2_area <- clc_crete_shp |>
     mutate(area_polygon=units::set_units(st_area(geometry),km^2)) |>
@@ -157,29 +177,16 @@ area_total <- do.call(rbind,
                       list(clc_label2_area,
                            geology_area,
                            desertification_crete_area,
-                           aridity_area))
+                           aridity_area)) |>
+    left_join(samples_total) |>
+    mutate(area=round(area, digits=0), mean_shannon=round(mean_shannon, digits=2), sd_shannon=round(sd_shannon, digits=2))
+
+write_delim(area_total, "../results/data_cube_summary_table.tsv", delim="\t")
 
 area_total |> arrange(category, class, area) |> kbl() |> kable_styling(latex_options = "scale_down")
 ```
 
 ```{r}
-# the number of samples per layer
-
-classes <- c("LABEL2", "geology_na", "ESA_12CL", "aridity_class" )
-
-classes_samples <- list()
-
-for (i in seq_along(classes)){
-    print(i)
-    classes_samples[[i]] <- metadata |> 
-        group_by(metadata[[classes[i]]]) |>
-        summarise(samples=n())
-}
-
-samples_total <- do.call(rbind, classes_samples)
-colnames(samples_total) <- c("class", "samples")
-
-samples_total |> kbl() |> kable_styling(latex_options = "scale_down")      
 #order_taxa <- endemic_species |> 
 #    group_by(order) |>
 #    summarise(taxa=n())
