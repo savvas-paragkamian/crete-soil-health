@@ -44,6 +44,7 @@ library(ggnewscale)
 library(ggpubr)
 library(pheatmap)
 library(sf)
+library(terra)
 library(jpeg)
 library(raster)
 library(scales)
@@ -220,51 +221,59 @@ ggsave("figures/map_crete_blank.png",
        units="cm",
        device="png")
 
+routes_cols=c("1"="#999999",
+              "2"="#E69F00",
+              "3"="#56B4E9",
+              "4"="#009E73",
+              "5"="#F0E442",
+              "6"="#0072B2",
+              "7"="#D55E00",
+              "8"="#CC79A7",
+              "9"="#000000",
+              "10"="firebrick")
+
+locations_spatial$route <- factor(locations_spatial$route,
+                        levels=unique(locations_spatial$route)[order(sort(unique(locations_spatial$route)))])
 
 crete_base <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
-#    geom_point(locations_spatial,
-#            mapping=aes(x=longitude, y=latitude, color=UCIE, shape=as.character(route)),
-#            size=1.7,
-#            alpha=0.6,
-#            show.legend=T) +
-#    geom_jitter(width = 0.25, height = 0.25)+
-#    geom_sf(crete_peaks,
-#            mapping=aes(),
-#            colour=NA,
-#            size=1,
-#            alpha=1,
-#            show.legend=FALSE) +
-    geom_label(data = crete_peaks,
-               mapping=aes(x = X, y = Y, label = name),
-               size = 2,
-#               nudge_x = 0.07,
-#               nudge_y=0.07,
-               label.padding = unit(0.1, "lines"))+
-    scale_fill_gradientn(guide = guide_colourbar(barwidth = 0.5, barheight = 3.5,
-                                  title="elevation",
-                                  direction = "vertical",
+    scale_fill_gradientn(guide = guide_colourbar(barwidth = 6, barheight = 1,
+                                  title="Elevation",
+                                  direction = "horizontal",
                                   title.vjust = 0.8),
                         colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
                         breaks = c(100, 800, 1500, 2400),
                         labels = c(100, 800, 1500, 2400))+
-#    scale_color_manual(values=locations_spatial$UCIE, guide="none")+
-#    scale_shape_manual(values=c(seq(0,9,1)),name="route")+
+    new_scale_fill()+
+    geom_point(locations_spatial,
+            mapping=aes(x=longitude,
+                        y=latitude,
+                        fill=route),
+            size=5,
+            shape=21,
+            color="gray30",
+            alpha=0.8,
+            show.legend=T) +
+    scale_fill_manual(values=routes_cols,
+                      name="route",
+                      guide = guide_legend(title = "Routes",
+                                           nrow=1,
+                                           byrow=TRUE,
+                                           direction = "horizontal"))+
     coord_sf(crs="wgs84") +
     theme_bw()+
     theme(axis.title=element_blank(),
           panel.border = element_blank(),
-          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+#          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
           panel.grid.major = element_blank(), #remove major gridlines
           panel.grid.minor = element_blank(), #remove minor gridlines
           legend.background = element_rect(fill='transparent'), #transparent legend bg
           line = element_blank(),
           axis.text=element_blank(),
-          legend.text=element_text(size=8),
-          legend.title = element_text(size=8),
-          legend.position = c(0.95,0.8),
-          legend.box.background = element_blank())
+          legend.text=element_text(size=11),
+          legend.title = element_text(size=11),
+          legend.position = "bottom")
 
 
 ggsave("figures/map_fig1a.tiff",
@@ -369,17 +378,17 @@ ggsave("figures/map_crete_corine_tr.png",
        units="cm",
        device="png")
 
-fig1 <- ggarrange(crete_blank,crete_base,crete_corine,
-          labels = c("A", "B", "C"),
+fig1 <- ggarrange(crete_base,crete_blank,
+          labels = c("A", "B"),
           align = "hv",
-          heights = c(0.75,0.8,1),
+          heights = c(0.9,0.8),
           ncol = 1,
-          nrow = 3,
+          nrow = 2,
           font.label=list(color="black",size=22)) + bgcolor("white")
 
 ggsave("figures/map_fig1.tiff", 
        plot=fig1, 
-       height = 40, 
+       height = 25, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -387,7 +396,7 @@ ggsave("figures/map_fig1.tiff",
 
 ggsave("figures/map_fig1.png", 
        plot=fig1, 
-       height = 40, 
+       height = 25, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -395,7 +404,7 @@ ggsave("figures/map_fig1.png",
 
 ggsave("figures/map_fig1.pdf", 
        plot=fig1, 
-       height = 40, 
+       height = 25, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -403,7 +412,7 @@ ggsave("figures/map_fig1.pdf",
 
 ggsave("figures/map_fig1-small.png", 
        plot=fig1, 
-       height = 40, 
+       height = 25, 
        width = 30,
        dpi = 300, 
        units="cm",
@@ -809,6 +818,8 @@ distribution_phyla_samples <- ggplot(phyla_stats,
   theme_bw() +
   theme(
     panel.grid.major.x = element_blank(),
+    axis.title.x=element_text(face="bold", size=13),
+    axis.title.y=element_text(face="bold", size=13),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
   )
@@ -817,7 +828,7 @@ ggsave("figures/taxonomy_distribution_phyla_samples.png",
        plot=distribution_phyla_samples,
        device="png",
        height = 20,
-       width = 23,
+       width = 14,
        units="cm")
 #####
 taxa_samples_summary <- community_matrix_l %>%
@@ -1007,8 +1018,10 @@ phyla_box <- ggplot(top_phyla,
     scale_color_manual(values=colors_label2)+
     xlab("Relative abundance")+
     theme_bw()+
-    theme(legend.position = c(0.75,0.2),
+    theme(legend.position = c(0.55,0.3),
           panel.grid.major.x = element_blank(),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
           panel.grid.minor.x = element_blank(),
           panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
 
@@ -1210,7 +1223,7 @@ asv_stat_sample <- ggplot() +
           axis.text = element_text(size=13),
           axis.title.x=element_text(face="bold", size=13),
           axis.title.y=element_text(face="bold", size=13),
-          legend.position = c(0.75, 0.08))
+          legend.position = c(0.75, 0.12))
 
 ggsave("figures/taxonomy_prevalence_asv_specialists_generalists.png",
        plot=asv_stat_sample,
@@ -1252,7 +1265,7 @@ taxa_stat_sample <- ggplot() +
           axis.text = element_text(size=13),
           axis.title.x=element_text(face="bold", size=13),
           axis.title.y=element_text(face="bold", size=13),
-          legend.position = c(0.8, 0.08))
+          legend.position = c(0.8, 0.12))
 
 ggsave("figures/taxonomy_prevalence_specialists_generalists.png",
        plot=taxa_stat_sample,
@@ -1278,6 +1291,22 @@ ggsave("figures/taxonomy_prevalence_specialists_generalists_cla.png",
        height = 60,
        width = 60,
        units="cm")
+
+figure_2 <- ggarrange(asv_stat_sample, taxa_stat_sample, distribution_phyla_samples, phyla_box,
+          labels = c("A", "B", "C", "D"),
+          align = "hv",
+          heights = c(1,1,0.8,0.8),
+          ncol = 2,
+          nrow = 2,
+          font.label=list(color="black",size=22)) + bgcolor("white")
+
+ggsave("figures/fig2_taxonomy.png", 
+       plot=figure_2, 
+       height = 30, 
+       width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
 
 ########################## specialists ##############################
 taxa_specialists <- taxa_sample_abundance |>
