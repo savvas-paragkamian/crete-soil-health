@@ -796,7 +796,18 @@ phyla_samples_summary <- community_matrix_l %>%
     group_by(ENA_RUN) %>%
     mutate(relative_srs=reads_srs_sum/sum(reads_srs_sum)) %>%
     mutate(z_srs=(reads_srs_sum-mean(reads_srs_sum))/sd(reads_srs_sum)) %>%
-    left_join(dplyr::select(metadata, ENA_RUN, LABEL1, LABEL2,LABEL3, elevation, elevation_bin, geology_na), by=c("ENA_RUN"="ENA_RUN"))
+    left_join(dplyr::select(metadata,
+                            ENA_RUN,
+                            aridity_class,
+                            aridity,
+                            ESA_12CL,
+                            LABEL1,
+                            LABEL2,
+                            LABEL3,
+                            elevation,
+                            elevation_bin,
+                            geology_na),
+              by=c("ENA_RUN"="ENA_RUN"))
     
 phyla_stats <- phyla_samples_summary %>% 
     group_by(Phylum) %>%
@@ -899,7 +910,7 @@ ggsave("figures/taxonomy_ratios_phyla_samples.png",
        units="cm")
 
 ## phyla ratios and elevation
-categories <- c("elevation_bin", "geology_na", "LABEL2", "aridity_class")
+categories <- c("elevation_bin", "geology_na", "LABEL2", "aridity_class", "ESA_12CL")
 
 for (cat in categories){
 
@@ -1039,7 +1050,81 @@ ggsave("figures/taxonomy_representative_phyla_box_short.png",
        width = 15,
        units="cm")
 
+phyla_box_ele <- ggplot(top_phyla,
+                    mapping=aes(x=relative_srs, y=Phylum))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(height = 0.1,width = 0.0001, stat="identity",alpha=0.9, aes(color=elevation_bin))+
+    scale_x_continuous(breaks=seq(0,0.5,0.1))+
+    scale_color_manual(values=c("#A77300", "#98BA6A", "#07A07D" , "#98CA53", "#A4A869","#AE6120","#D06C5B","#BE81A3"))+
+    xlab("Relative abundance")+
+    theme_bw()+
+    theme(legend.position = c(0.75,0.3),
+          panel.grid.major.x = element_blank(),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
 
+
+ggsave("figures/taxonomy_representative_phyla_box_ele_short.png",
+       plot=phyla_box_ele,
+       device="png",
+       height = 20,
+       width = 15,
+       units="cm")
+### facet 
+###
+
+phyla_box_f <- ggplot(top_phyla,
+                    mapping=aes(x=relative_srs, y=Phylum))+
+    geom_boxplot(outlier.shape = NA)+
+    geom_jitter(height = 0.1,width = 0.0001, stat="identity",alpha=0.9, aes(color=LABEL2))+
+    scale_x_continuous(breaks=seq(0,0.5,0.1))+
+#    scale_color_manual(values=colors_label2)+
+    xlab("Relative abundance")+
+    theme_bw()+
+    theme(legend.position = c(0.85,0.1),
+          panel.grid.major.x = element_blank(),
+          axis.title.x=element_text(face="bold", size=13),
+          axis.title.y=element_text(face="bold", size=13),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed"))
+
+phyla_box_f_2 <- phyla_box_f + facet_wrap(vars(LABEL2),scales="fixed")
+
+ggsave("figures/taxonomy_representative_phyla_box_label2_f.png",
+       plot=phyla_box_f_2,
+       device="png",
+       height = 40,
+       width = 40,
+       units="cm")
+
+phyla_box_f_3 <- phyla_box_f + facet_wrap(vars(LABEL3),scales="fixed")
+
+ggsave("figures/taxonomy_representative_phyla_box_label3_f.png",
+       plot=phyla_box_f_3,
+       device="png",
+       height = 60,
+       width = 40,
+       units="cm")
+
+phyla_box_f_esa <- phyla_box_f + facet_wrap(vars(ESA_12CL),scales="fixed")
+
+ggsave("figures/taxonomy_representative_phyla_box_esa_f.png",
+       plot=phyla_box_f_esa,
+       device="png",
+       height = 60,
+       width = 40,
+       units="cm")
+
+phyla_box_f_arid <- phyla_box_f + facet_wrap(vars(aridity_class),scales="fixed")
+
+ggsave("figures/taxonomy_representative_phyla_box_arid_f.png",
+       plot=phyla_box_f_arid,
+       device="png",
+       height = 40,
+       width = 40,
+       units="cm")
 ############################ Heatmap distribution Phyla Samples ############################
 phyla_samples_w_z <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
@@ -1302,6 +1387,23 @@ figure_2 <- ggarrange(asv_stat_sample, taxa_stat_sample, distribution_phyla_samp
 
 ggsave("figures/fig2_taxonomy.png", 
        plot=figure_2, 
+       height = 30, 
+       width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+
+figure_2a <- ggarrange(asv_stat_sample, taxa_stat_sample, distribution_phyla_samples, phyla_box_ele,
+          labels = c("A", "B", "C", "D"),
+          align = "hv",
+          heights = c(1,1,0.8,0.8),
+          ncol = 2,
+          nrow = 2,
+          font.label=list(color="black",size=22)) + bgcolor("white")
+
+ggsave("figures/fig2_taxonomy_a.png", 
+       plot=figure_2a, 
        height = 30, 
        width = 30,
        dpi = 300, 
