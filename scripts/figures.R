@@ -62,6 +62,8 @@ metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
 metadata$elevation_bin <- factor(metadata$elevation_bin,
                         levels=unique(metadata$elevation_bin)[order(sort(unique(metadata$elevation_bin)))])
+metadata$cluster <- factor(metadata$cluster,
+                        levels=unique(metadata$cluster)[order(sort(unique(metadata$cluster)))])
 
 samples_ucie_nmds_genera <- read_delim("results/samples_ucie_nmds_genera.tsv")
 
@@ -301,6 +303,62 @@ ggsave("figures/map_crete_routes_tr.png",
        height = 10,
        width = 20,
        dpi = 300,
+       units="cm",
+       device="png")
+
+### clusters maps
+cluster_cols=c("1"="#009E73",
+              "2"="#56B4E9",
+              "3"="#999999",
+              "4"="#BE81A3",
+              "5"="#F0E442",
+              "6"="#D55E00")
+crete_cluster <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(dem_crete_df, mapping=aes(x=x, y=y, fill=dem_crete))+
+    scale_fill_gradientn(guide = guide_colourbar(barwidth = 6, barheight = 1,
+                                  title="Elevation",
+                                  direction = "horizontal",
+                                  title.vjust = 0.8),
+                        colours = c("snow3","#f0e442","#d55e00","#cc79a7"),
+                        breaks = c(100, 800, 1500, 2400),
+                        labels = c(100, 800, 1500, 2400))+
+    new_scale_fill()+
+    geom_point(locations_spatial,
+            mapping=aes(x=longitude,
+                        y=latitude,
+                        fill=as.character(cluster)),
+            size=2,
+            shape=21,
+            color="gray30",
+            alpha=0.6,
+            show.legend=T) +
+    scale_fill_manual(values=cluster_cols,
+                      name="cluster",
+                      guide = guide_legend(title = "Clusters",
+                                           nrow=1,
+                                           byrow=TRUE,
+                                           direction = "horizontal"))+
+    coord_sf(crs="wgs84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+#          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=11),
+          legend.title = element_text(size=11),
+          legend.position = "bottom")
+
+
+ggsave("figures/map_clusters.png",
+       plot=crete_cluster,
+       height = 20,
+       width = 40,
+       dpi = 600,
        units="cm",
        device="png")
 
@@ -801,6 +859,7 @@ phyla_samples_summary <- community_matrix_l %>%
                             aridity_class,
                             aridity,
                             ESA_12CL,
+                            cluster,
                             LABEL1,
                             LABEL2,
                             LABEL3,
@@ -910,7 +969,7 @@ ggsave("figures/taxonomy_ratios_phyla_samples.png",
        units="cm")
 
 ## phyla ratios and elevation
-categories <- c("elevation_bin", "geology_na", "LABEL2", "aridity_class", "ESA_12CL")
+categories <- c("elevation_bin","cluster", "geology_na", "LABEL2", "aridity_class", "ESA_12CL")
 
 for (cat in categories){
 
@@ -1547,6 +1606,7 @@ cats <- c("vegetation_zone",
           "LABEL3",
           "aridity_class",
           "elevation_bin",
+          "cluster",
           "location",
           "protection_status",
           "geology_na")
@@ -1731,6 +1791,7 @@ cats <- c("vegetation_zone",
           "LABEL2",
           "LABEL3",
           "elevation_bin",
+          "cluster",
           "location",
           "protection_status",
           "geology_na")

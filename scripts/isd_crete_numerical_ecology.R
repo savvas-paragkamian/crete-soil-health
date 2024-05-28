@@ -27,6 +27,7 @@ library(readr)
 library(magrittr)
 library(tidyr)
 library(ggplot2)
+library(dendextend) 
 
 ################################## Load data ##################################
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
@@ -92,13 +93,31 @@ print("(dis)similarities")
 bray <- vegdist(community_matrix,
                 method="bray")
 
-png(file="figures/clustering_bray_hclust_samples.png",
-    width = 50,
-    height = 30,
+hc <- hclust(bray)
+
+hc_df <- as.data.frame(cutree(hc,k=6)) |>
+    rownames_to_column("ENA_RUN") |>
+    as_tibble() 
+colnames(hc_df) <- c("ENA_RUN", "cluster")
+
+cluster_cols=c("1"="#999999",
+              "2"="#BE81A3",
+              "3"="#56B4E9",
+              "4"="#009E73",
+              "5"="#F0E442",
+              "6"="#D55E00")
+
+dend <- as.dendrogram(hc) |>
+    color_branches(k = 6, col=cluster_cols) |>
+    color_labels(k = 6, col=cluster_cols)
+
+png(file=paste0("figures/clustering_bray_hclust_samples.png"),
+    width = 55,
+    height = 20,
     res=300,
     units = "cm",
     bg="white")
-plot(hclust(bray))
+plot(dend)
 dev.off()
 
 bray_tax <- vegdist(t(community_matrix),method="bray")

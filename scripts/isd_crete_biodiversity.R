@@ -333,11 +333,24 @@ crete_biodiversity_s <- community_matrix_l %>%
 print("sample with the highest microbial species diversity")
 crete_biodiversity_s[which(crete_biodiversity_s$Species==max(crete_biodiversity_s$Species)),]
 
+### communities
+bray <- vegdist(community_matrix,
+                method="bray")
+
+hc <- hclust(bray)
+
+hc_df <- as.data.frame(cutree(hc,k=6)) |>
+    rownames_to_column("ENA_RUN") |>
+    as_tibble() 
+colnames(hc_df) <- c("ENA_RUN", "cluster")
+
+
 ## keep only the sample metadata after filtering
 ## filter also metadata and taxonomy
 metadata_all <-  metadata |>
     left_join(biodiversity_index, by=c("ENA_RUN"="ENA_RUN")) |>
     left_join(sample_stats_total, by=c("ENA_RUN"="ENA_RUN")) |>
+    left_join(hc_df) |>
     filter(ENA_RUN %in% unique(community_matrix_l$ENA_RUN))
 
 write_delim(metadata_all,
@@ -382,7 +395,7 @@ singletons_srs <- crete_biodiversity |>
     summarise(total_reads=sum(srs_abundance)) %>% 
     filter(total_reads==1) %>%
     nrow()
-print(paste0("there are ",singletons_srs," singletons of SR asvs"))
+print(paste0("there are ",singletons_srs," singletons asvs after the SRS"))
 
 ## asv and samples distribution
 asv_sample_dist <- asv_metadata %>%
