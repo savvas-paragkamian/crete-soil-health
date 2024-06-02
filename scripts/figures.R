@@ -115,6 +115,23 @@ aridity_crete_df$aridity_class <- cut(aridity_crete_df$aridity,
 desertification_crete <- rast("spatial_data/crete_desertification_risk/esa3rdp_crete.tif")
 desertification_crete_cat <- read_delim("spatial_data/crete_desertification_risk/esa3rdp_crete.tsv", delim="\t")
 desertification_crete_df <- as.data.frame(desertification_crete,xy=T, cells=T)
+# harmonised world soil database v2
+
+hwsd2 <- rast("spatial_data/hwsd2_crete/hwsd2_crete.tif")
+hwsd2[hwsd2[] == 7001 ] = NA
+hwsd2_df <- as.data.frame(hwsd2,xy=T, cells=T) 
+# hswd metadata
+# with trimws the leading spaces are removed for the values.
+HWSD2_wrb4 <- read_delim("spatial_data/hwsd2_crete/HWSD2_D_WRB4.tsv", delim="\t") |>
+    mutate(VALUE=trimws(VALUE)) |>
+    distinct(VALUE, CODE) 
+
+HWSD2_SMU <- read_delim("spatial_data/hwsd2_crete/HWSD2_SMU.tsv", delim="\t") |>
+    distinct(HWSD2_SMU_ID, WRB4) |>
+    left_join(HWSD2_wrb4, by=c("WRB4"="CODE"))
+
+hwsd2_df <- hwsd2_df |> 
+    left_join(HWSD2_SMU, by=c("HWSD2"="HWSD2_SMU_ID"))
 
 ####################### UCIE #########################
 # UCIE needs 3 axis of ordination
@@ -835,6 +852,55 @@ ggsave("figures/map_crete_desertification_tr.png",
        height = 10,
        width = 20,
        dpi = 300,
+       units="cm",
+       device="png")
+
+
+#### Harmonised World Soil Database v2 
+### hwsd2_df
+hwsd2_class <- c("Lithic Leptosols"="darkolivegreen2",
+                "Calcaric Regosols"="tomato",
+                "Calcaric Fluvisols"="darkgrey",
+                "Eutric Cambisols"="khaki1",
+                "Chromic Luvisols"="red")
+
+
+crete_hwsd2_g <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(hwsd2_df, mapping=aes(x=x, y=y, fill=VALUE))+
+    scale_fill_manual(values = hwsd2_class,
+                      guide = "legend") +
+    guides(fill = guide_legend(nrow=1,byrow=TRUE, override.aes = list(color = "transparent", alpha=1) ),
+           colour = guide_legend(override.aes = list(alpha=1, fill="transparent") ) )+
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+#          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+#          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_blank(),
+          legend.position = "bottom",
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_crete_hwsd2.tiff", 
+       plot=crete_hwsd2_g, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_hwsd2.png", 
+       plot=crete_hwsd2_g, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
        units="cm",
        device="png")
 
