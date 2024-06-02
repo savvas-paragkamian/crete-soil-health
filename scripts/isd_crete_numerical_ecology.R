@@ -100,16 +100,20 @@ hc_df <- as.data.frame(cutree(hc,k=6)) |>
     as_tibble() 
 colnames(hc_df) <- c("ENA_RUN", "cluster")
 
-cluster_cols=c("1"="#999999",
-              "2"="#BE81A3",
-              "3"="#56B4E9",
-              "4"="#009E73",
+cluster_cols=c("#D55E00", "#F0E442","#009E73", "#56B4E9", "#BE81A3", "#999999")
+
+cluster_cols=c("1"="#009E73",
+              "2"="#56B4E9",
+              "3"="#999999",
+              "4"="#BE81A3",
               "5"="#F0E442",
               "6"="#D55E00")
 
 dend <- as.dendrogram(hc) |>
-    color_branches(k = 6, col=cluster_cols) |>
-    color_labels(k = 6, col=cluster_cols)
+    set("labels_col", value = cluster_cols, k=6) |>
+    set("branches_k_color", value = cluster_cols, k = 6) 
+    #color_branches(k = 6, col=cluster_cols) |>
+    #color_labels(k = 6, col=cluster_cols)
 
 png(file=paste0("figures/clustering_bray_hclust_samples.png"),
     width = 55,
