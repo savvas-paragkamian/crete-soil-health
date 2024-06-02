@@ -128,8 +128,28 @@ sf_desertification <- cbind(st_drop_geometry(metadata_aridity),df_corrected_coor
 metadata_aridity$ESA_id <- raster::extract(esa3rdp_crete_r,sf_desertification, cellnumbers=F)  
 
 metadata_aridity <- metadata_aridity |> left_join(esa3rdp_attr, by=c("ESA_id"="ESA_id"))
-metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_aridity))
 
+## Harmonised world soil database v2
+hwsd2 <- rast("spatial_data/hwsd2_crete/hwsd2_crete.tif")
+hwsd_r <- raster(hwsd2)
+# hswd metadata
+# with trimws the leading spaces are removed for the values.
+HWSD2_wrb4 <- read_delim("spatial_data/hwsd2_crete/HWSD2_D_WRB4.tsv", delim="\t") |>
+    mutate(VALUE=trimws(VALUE)) |>
+    distinct(VALUE, CODE) 
+
+HWSD2_SMU <- read_delim("spatial_data/hwsd2_crete/HWSD2_SMU.tsv", delim="\t") |>
+    distinct(HWSD2_SMU_ID, WRB4) |>
+    left_join(HWSD2_wrb4, by=c("WRB4"="CODE"))
+
+
+check.coords <- points2nearestcell(locations_s, hwsd_r)
+# assign the variable to the initial file. The order of the rows is kept the same
+metadata_aridity$HWSD2_SMU_ID <- raster::extract(hwsd_r,metadata_aridity, cellnumbers=F)  
+
+metadata_aridity <- metadata_aridity |> left_join(HWSD2_SMU, by=c("HWSD2_SMU_ID"="HWSD2_SMU_ID"))
+
+metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_aridity))
 ## world clim data enrichment
 raster_map <- function(raster_tmp,world_clim_variable,metadata_spatial, crete_shp){
     raster_pixel <- as(raster_tmp, "SpatialPixelsDataFrame")
@@ -215,4 +235,6 @@ metadata <- metadata_spatial %>%
                                              ifelse(is.na(SITETYPE) & DESIG_ENG=="Wildlife Refuge", "Wildlife Refuge", "both"))))
 
 write_delim(metadata,"results/metadata_spatial.tsv", delim="\t")
+
+print("Script finished.")
 
