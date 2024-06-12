@@ -133,6 +133,17 @@ HWSD2_SMU <- read_delim("spatial_data/hwsd2_crete/HWSD2_SMU.tsv", delim="\t") |>
 hwsd2_df <- hwsd2_df |> 
     left_join(HWSD2_SMU, by=c("HWSD2"="HWSD2_SMU_ID"))
 
+
+##### hilda transitions 40 years
+hilda_id_names <- read_delim("spatial_data/hilda_1978_2018/hilda_1978_2018.tsv", delim="\t")
+
+hilda_1978_2018 <- st_read("spatial_data/hilda_1978_2018/hilda_1978_2018.shp") |>
+    filter(lyr_1>0) |>
+    left_join(hilda_id_names, by=c("lyr_1"="lyr.1"))
+#### protected areas
+
+wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp")
+
 ####################### UCIE #########################
 # UCIE needs 3 axis of ordination
 print("starting UCIE")
@@ -204,6 +215,18 @@ crete_dem <- ggplot() +
           axis.text=element_blank(),
           legend.text=element_text(size=8),
           legend.title = element_text(size=8))
+
+crete_dem_tr <- crete_dem + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_dem_tr.png",
+       bg='transparent',
+       plot=crete_dem_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
 
 crete_blank <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
@@ -503,12 +526,12 @@ crete_geology_plot <- ggplot() +
             alpha=1,
             colour="transparent",
             show.legend=T) +
-    geom_point(locations_spatial,
-            mapping=aes(x=longitude, y=latitude),
-            size=1.7,
-            color="gray50",
-            alpha=0.4,
-            show.legend=F) +
+#    geom_point(locations_spatial,
+#            mapping=aes(x=longitude, y=latitude),
+#            size=1.7,
+#            color="gray50",
+#            alpha=0.4,
+#            show.legend=F) +
     scale_fill_manual(values = c("-"="#000000",
                                  "fo"="chocolate1",
                                  "ft" = "cornflowerblue",
@@ -901,6 +924,162 @@ ggsave("figures/map_crete_hwsd2.png",
        height = 10, 
        width = 20,
        dpi = 300, 
+       units="cm",
+       device="png")
+
+crete_hwsd2_tr <- crete_hwsd2_g + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_hwsd2_tr.png",
+       bg='transparent',
+       plot=crete_hwsd2_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+############ HILDA+ ################
+hilda_colors <- c("pasture/rangeland (stable)" = "#F4C430",  # Gold
+                   "water" = "#87CEEB",  # Sky Blue
+                   "urban (stable)" = "#808080",  # Gray
+                   "cropland (stable)" = "#228B22",  # Forest Green
+                   "pasture/rangeland to cropland" = "#FFD700",  # Yellow
+                   "pasture/rangeland to unmanaged grass/shrubland" = "#CD853F",  # Peru
+                   "pasture/rangeland to urban" = "#4682B4",  # Steel Blue
+                   "cropland to pasture/rangeland" = "#20B2AA",  # Light Sea Green
+                   "cropland to forest" = "#FF6347",  # Tomato
+                   "forest (stable)" = "#556B2F",  # Dark Olive Green
+                   "cropland to urban" = "#B0E0E6",  # Powder Blue
+                   "pasture/rangeland to forest" = "#32CD32",  # Lime Green
+                   "unmanaged grass/shrubland (stable)" = "#A0522D",  # Sienna
+                   "cropland to unmanaged grass/shrubland" = "#800080",  # Purple
+                   "cropland to sparse/no vegetation" = "#8A2BE2",  # Blue Violet
+                   "pasture/rangeland to sparse/no vegetation" = "#00FA9A",  # Medium Spring Green
+                   "sparse/no vegetation (stable)" = "#F0FFFF",  # Azure
+                   "forest to pasture/rangeland" = "#6B8E23",  # Olive Drab
+                   "forest to unmanaged grass/shrubland" = "#9932CC")  # Dark Orchid
+
+crete_hilda_g <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_sf(hilda_1978_2018,
+            mapping=aes(fill=hilda_name),
+            alpha=1,
+            colour="transparent",
+            show.legend=T) +
+    scale_fill_manual(values = hilda_colors,
+                      guide = "legend") +
+    guides(fill = guide_legend(override.aes = list(color = "transparent", alpha=1) ),
+           colour = guide_legend(override.aes = list(alpha=1, fill="transparent") ) )+
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          line = element_blank(),
+          axis.text=element_blank(),
+          plot.background = element_rect(fill = "white",
+                                         colour = "white"),
+          legend.title = element_blank(),
+          legend.position = "bottom",
+          legend.box.background = element_blank(),
+          legend.key.size = unit(3, "mm"), 
+          legend.text=element_text(size=7)) 
+
+ggsave("figures/map_crete_hilda.tiff", 
+       plot=crete_hilda_g, 
+       height = 10, 
+       width = 20,
+       dpi = 600, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_hilda.png", 
+       plot=crete_hilda_g, 
+       height = 10, 
+       width = 20,
+       dpi = 600, 
+       units="cm",
+       device="png")
+
+crete_hilda_tr <- crete_hilda_g + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_hilda_tr.png",
+       bg='transparent',
+       plot=crete_hilda_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+
+####### protected areas
+
+g_wdpa <- ggplot()+
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_sf(wdpa_crete, mapping=aes(fill=DESIG_ENG),alpha=0.5, size=0.1)+ theme_bw()+
+    theme(legend.position="bottom",
+          legend.margin=margin())+
+    guides(fill=guide_legend(nrow=5,byrow=TRUE, title="")) +
+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          line = element_blank(),
+          axis.text=element_blank(),
+          plot.background = element_rect(fill = "white",
+                                         colour = "white"),
+          legend.title = element_blank(),
+          legend.position = "bottom",
+          legend.box.background = element_blank(),
+          legend.key.size = unit(3, "mm"), 
+          legend.text=element_text(size=7)) 
+
+ggsave("figures/map_crete_protected_aread.png",
+       g_wdpa,
+       height = 10,
+       width = 20,
+       dpi = 600,
+       unit="cm",
+       device="png")
+
+crete_wdpa_tr <- g_wdpa + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_protected_tr.png",
+       bg='transparent',
+       plot=crete_wdpa_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+### crete data cube 
+fig_data_cube <- ggarrange(crete_dem_tr,
+                           crete_corine_tr,
+                           crete_geology_tr,
+                           crete_hwsd2_tr,
+                           crete_hilda_tr,
+                           crete_wdpa_tr,
+                           crete_bioclim1_tr,
+                           crete_bioclim12_tr,
+                           crete_aridity_tr,
+                           crete_desertification_tr,
+          labels = LETTERS[seq( from = 1, to = 10 )],
+          align = "hv",
+          ncol = 2,
+          nrow = 5,
+          font.label=list(color="black",size=22)) + bgcolor("white")
+
+ggsave("figures/map_crete_data_cube.png",
+       plot=fig_data_cube,
+       height = 20,
+       width = 20,
+       dpi = 300,
        units="cm",
        device="png")
 
