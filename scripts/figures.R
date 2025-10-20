@@ -45,11 +45,11 @@ library(ggpubr)
 library(pheatmap)
 library(sf)
 library(terra)
+library(tidyterra)
 library(jpeg)
 library(raster)
 library(scales)
 library(ucie)
-
 ################################## Load data ##################################
 ## biodiversity
 community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
@@ -87,6 +87,47 @@ wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(D
 
 natura_crete_land <- st_intersection(natura_crete, crete_shp)
 natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
+
+#G2 model from the paper 
+# Seasonal monitoring of soil erosion at regional scale:
+# An application of the G2 model in Crete focusing on agricultural land uses
+g2_model_all <- terra::rast("spatial_data/1-s2.0-S0303243413001116-mmc1.kmz")
+
+# the values are rgb values
+#  has 4 layers is because it’s an RGBA image
+# red, green, blue, alpha
+
+r <- g2_model_all
+
+# Drop alpha where transparent
+r[[1:3]][r[[4]] == 0] <- NA
+
+# Keep only RGB
+r <- r[[1:3]]
+# Convert RGB (0–255) to 0–1 scale for ggplot
+r <- r / 255
+
+# Convert to data frame for ggplot
+r_df <- as.data.frame(r, xy = TRUE, na.rm = TRUE)
+colnames(r_df) <- c("x", "y", "R", "G", "B")
+r_df$col <- rgb(r_df$R, r_df$G, r_df$B)
+
+# final raster df
+g2_model <- r_df
+
+# rivers
+rivers <- sf::st_read("spatial_data/rivers-edited_crete/rivers-edited.shp")
+
+# springs
+#
+springs <- sf::st_read("spatial_data/springs_crete/springs.shp")
+
+springs_grs <- springs |>
+    st_set_crs(crs(rivers))
+
+springs <- springs_grs |>
+    st_transform(crs="WGS84")
+
 # raster DEM hangling
 dem_crete <- raster("spatial_data/dem_crete/dem_crete.tif")
 dem_crete_pixel <- as(dem_crete, "SpatialPixelsDataFrame")
@@ -345,6 +386,178 @@ ggsave("figures/map_crete_routes_tr.png",
        dpi = 300,
        units="cm",
        device="png")
+
+
+#------------------------------------------------#
+# G2 model for soil erosion in Crete
+#------------------------------------------------#
+
+crete_g2 <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_raster(data = r_df, aes(x = x, y = y, fill = col)) +
+    scale_fill_identity() +
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_text(size=5),
+          legend.position = "bottom",
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_crete_g2.tiff", 
+       plot=crete_g2, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_g2.png", 
+       plot=crete_g2, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+crete_g2_tr <- crete_g2 + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_g2_tr.png",
+       bg='transparent',
+       plot=crete_g2_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+
+#------------------------------------------------#
+# river in Crete
+#------------------------------------------------#
+
+crete_rivers <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_sf(rivers,
+            colour="dodgerblue",fill="dodgerblue",
+            mapping=aes(),
+            alpha=1,
+            show.legend=T) +
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_text(size=5),
+          legend.position = "bottom",
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_crete_rivers.tiff", 
+       plot=crete_rivers, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_rivers.png", 
+       plot=crete_rivers, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+crete_rivers_tr <- crete_rivers + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_rivers_tr.png",
+       bg='transparent',
+       plot=crete_rivers_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+
+
+#------------------------------------------------#
+# springs in Crete
+#------------------------------------------------#
+
+crete_springs <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_sf(springs,
+            colour="gold2",fill="gold2",
+            mapping=aes(),
+            size=0.61,
+            alpha=1,
+            show.legend=T) +
+    coord_sf(crs="WGS84") +
+    theme_bw()+
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          legend.background = element_rect(fill='transparent'), #transparent legend bg
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_text(size=5),
+          legend.position = "bottom",
+          legend.box.background = element_blank())
+
+
+ggsave("figures/map_crete_springs.tiff", 
+       plot=crete_springs, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="tiff")
+
+ggsave("figures/map_crete_springs.png", 
+       plot=crete_springs, 
+       height = 10, 
+       width = 20,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+crete_springs_tr <- crete_springs + theme(legend.position = "none",
+                                    panel.background = element_rect(fill='transparent'),
+                                    plot.background = element_rect(fill='transparent', color=NA)) #transparent plot bg
+ggsave("figures/map_crete_springs_tr.png",
+       bg='transparent',
+       plot=crete_springs_tr,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+#------------------------------------------------#
+# clusters in the map
+#------------------------------------------------#
+# add more clusters and different colors
 
 ### clusters maps
 cluster_cols=c("1"="#009E73",
@@ -1023,7 +1236,6 @@ g_wdpa <- ggplot()+
     theme(legend.position="bottom",
           legend.margin=margin())+
     guides(fill=guide_legend(nrow=5,byrow=TRUE, title="")) +
-
     theme(axis.title=element_blank(),
           panel.border = element_blank(),
           panel.grid.major = element_blank(), #remove major gridlines
@@ -1062,24 +1274,26 @@ ggsave("figures/map_crete_protected_tr.png",
 fig_data_cube <- ggarrange(crete_dem_tr,
                            crete_corine_tr,
                            crete_geology_tr,
+                           crete_rivers_tr,
                            crete_hwsd2_tr,
                            crete_hilda_tr,
                            crete_wdpa_tr,
                            crete_bioclim1_tr,
                            crete_bioclim12_tr,
                            crete_aridity_tr,
+                           crete_g2_tr,
                            crete_desertification_tr,
-          labels = LETTERS[seq( from = 1, to = 10 )],
+          labels = LETTERS[seq( from = 1, to = 12 )],
           align = "hv",
-          ncol = 2,
-          nrow = 5,
+          ncol = 3,
+          nrow = 4,
           font.label=list(color="black",size=22)) + bgcolor("white")
 
 ggsave("figures/map_crete_data_cube.png",
        plot=fig_data_cube,
-       height = 20,
-       width = 20,
-       dpi = 300,
+       height = 25,
+       width = 35,
+       dpi = 600,
        units="cm",
        device="png")
 
