@@ -272,8 +272,12 @@ ggsave("figures/map_crete_dem_tr.png",
 crete_blank <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
     geom_point(locations_spatial,
-            mapping=aes(x=longitude, y=latitude, color=UCIE),
-            size=6,
+            mapping=aes(x=longitude,
+                        y=latitude,
+                        color=UCIE,
+                        shape=as.character(cluster)),
+            size=8,
+            alpha=0.8,
             show.legend=F) +
     geom_jitter(width = 0.25, height = 0.25)+
     scale_color_manual(values=locations_spatial$UCIE, guide="none")+
@@ -1340,8 +1344,21 @@ phyla_stats <- phyla_samples_summary %>%
 ### distribution phyla samples
 distribution_phyla_samples <- ggplot(phyla_stats,
        aes(x = proportion_sample, y = Phylum)) +
-  geom_point(size = 2) +  # Use a larger dot
-  scale_y_discrete(limits=rev) +
+  geom_point(mapping=aes(color = average_relative,
+                         size = average_relative)) +  # Use a larger dot
+  scale_y_discrete(limits = function(x) rev(x))+
+  labs(color = "Mean relative\nabundance",
+       size = "Mean relative\nabundance") +
+  guides(color = guide_legend(),
+         size = guide_legend()) +
+  scale_size_continuous(
+    range  = c(1,5),
+    breaks = pretty_breaks(n = 8)
+  ) +
+  scale_color_viridis_c(
+    option = "D",               # "A","B","C","D","E","F" etc.
+    breaks = pretty_breaks(n = 8)
+  ) +
   xlab("Samples proportion")+
   ylab("Phylum")+
   theme_bw() +
@@ -1349,8 +1366,10 @@ distribution_phyla_samples <- ggplot(phyla_stats,
     panel.grid.major.x = element_blank(),
     axis.title.x=element_text(face="bold", size=13),
     axis.title.y=element_text(face="bold", size=13),
+    legend.position=c(0.8,0.2),
     panel.grid.minor.x = element_blank(),
-    panel.grid.major.y = element_line(colour = "grey60", linetype = "dashed")
+    panel.grid.major.y = element_line(colour = "grey60",
+                                      linetype = "dashed")
   )
 
 ggsave("figures/taxonomy_distribution_phyla_samples.png",
@@ -1359,6 +1378,7 @@ ggsave("figures/taxonomy_distribution_phyla_samples.png",
        height = 20,
        width = 14,
        units="cm")
+
 #####
 taxa_samples_summary <- community_matrix_l %>%
     group_by(ENA_RUN,scientificName, classification) %>%
@@ -1845,6 +1865,13 @@ taxa_sample_abundance <- community_matrix_l |>
     mutate(prevalence_class=ifelse(n_samples<10 & mean_rel_abundance>0.003,
                                    "specialists",ifelse(n_samples>120, "generalists","no classification")))
 
+label_data <- taxa_sample_abundance %>%
+  dplyr::filter(prevalence_class %in% c("specialists", "generalists")) %>%
+  dplyr::group_by(prevalence_class) %>%
+  dplyr::slice_max(order_by = mean_rel_abundance, n = 40, with_ties = FALSE) %>%
+  dplyr::ungroup()
+
+
 taxa_stat_sample <- ggplot() +
     geom_point(taxa_sample_abundance,
                mapping=aes(x=proportion_samples, y=mean_rel_abundance, color=prevalence_class)) +
@@ -1854,6 +1881,20 @@ taxa_stat_sample <- ggplot() +
 #                              ymin=mean_abundance-sd_abundance,
 #                              ymax=mean_abundance+sd_abundance,
 #                              alpha=0.5))+
+    geom_text_repel(
+                    data = label_data,
+                    aes(x = proportion_samples, y = mean_rel_abundance,
+                        label = scientificName, color = prevalence_class),
+                    size = 3.5,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.5,
+                    seed = 123                # reproducible placement
+                    ) +
     scale_color_manual(values=c("generalists"="#1370A1",
                                 "no classification"="#999999",
                                 "specialists"="#AE6120"),
