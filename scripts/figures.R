@@ -36,12 +36,14 @@
 ###############################################################################
 
 # load packages and functions
-#setwd("../")
+setwd("../")
+
 source("scripts/functions.R")
 library(vegan)
 library(tidyverse)
 library(ggnewscale)
 library(ggpubr)
+library(patchwork)
 library(pheatmap)
 library(sf)
 library(terra)
@@ -50,6 +52,7 @@ library(jpeg)
 library(raster)
 library(scales)
 library(ucie)
+
 ################################## Load data ##################################
 ## biodiversity
 community_matrix_l <- read_delim("results/community_matrix_l.tsv",delim="\t")
@@ -1352,7 +1355,7 @@ distribution_phyla_samples <- ggplot(phyla_stats,
   guides(color = guide_legend(),
          size = guide_legend()) +
   scale_size_continuous(
-    range  = c(1,5),
+    range  = c(2,6),
     breaks = pretty_breaks(n = 8)
   ) +
   scale_color_viridis_c(
@@ -1366,7 +1369,7 @@ distribution_phyla_samples <- ggplot(phyla_stats,
     panel.grid.major.x = element_blank(),
     axis.title.x=element_text(face="bold", size=13),
     axis.title.y=element_text(face="bold", size=13),
-    legend.position=c(0.8,0.2),
+    legend.position=c(0.6,0.2),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(colour = "grey60",
                                       linetype = "dashed")
@@ -1966,6 +1969,22 @@ ggsave("figures/fig2_taxonomy_a.png",
        height = 30, 
        width = 30,
        dpi = 300, 
+       units="cm",
+       device="png")
+
+###### figure 4 for Crete Idea
+
+figure_4 <- (taxa_stat_sample + distribution_phyla_samples + plot_layout(widths=c(0.75,0.25))) / crete_blank +
+  plot_layout(heights = c(1,0.5)) +
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag = element_text(size = 22),
+        plot.background = element_rect(fill = "white", colour = NA))
+
+ggsave("figures/fig_isd_microbiome.png", 
+       plot=figure_4, 
+       height = 35, 
+       width = 30,
+       dpi = 600, 
        units="cm",
        device="png")
 
