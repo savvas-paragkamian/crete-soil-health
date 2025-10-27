@@ -28,6 +28,9 @@
 # 4. Functional profiles
 #   a) distribution
 #   b) ratios
+# 5. Differential abundance
+#   a) read files
+#   b) heatmap
 #
 ###############################################################################
 # time: takes ~1 hour because of the many maps produced

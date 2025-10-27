@@ -93,7 +93,7 @@ echo "executing biodiversity script"
 ./scripts/isd_crete_biodiversity.R
 
 echo "compositionality and differential abundance"
-#####./scripts/isd_crete_compositionality.R
+#####./scripts/isd_crete_differential_abundance.R
 
 echo "executing FAPROTAX"
 cd FAPROTAX_1.2.7/

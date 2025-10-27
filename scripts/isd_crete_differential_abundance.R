@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 ###############################################################################
-# script name: isd_crete_compositionality.R
+# script name: isd_crete_differential_abundance.R
 # developed by: Savvas Paragkamian
 # framework: ISD Crete
 ###############################################################################
@@ -12,7 +12,7 @@
 # 75 in minutes
 # OUTPUT: RDS files of each run
 ###############################################################################
-# usage:./scripts/isd_crete_compositionality.R
+# usage:./scripts/isd_crete_differential_abundance.R
 ###############################################################################
 
 library(magrittr)
