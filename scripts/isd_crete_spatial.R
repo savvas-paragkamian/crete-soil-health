@@ -259,7 +259,36 @@ colnames(g2_values) <- "erosion_g2"
 # bind with the latest metadata file
 metadata_aridity <- cbind(metadata_aridity,g2_values)
 
+############################################################################
+################################### HILDA + ################################
+############################################################################
+
+hilda <- rast("spatial_data/hilda_1976_2016/hilda_1976_2016.tif")
+
+# make 0 as NA 
+hilda[hilda == 0] <- NA
+
+
+hilda_id_names <- read_delim("spatial_data/hilda_1976_2016/hilda_transitions_names.tsv", delim="\t")
+
+# find the points fall outside a raster cell
+check.coords <- points2nearestcell(locations_s, hilda)
+
+sf_hilda <- cbind(st_drop_geometry(metadata_aridity),check.coords) %>% 
+    st_as_sf(
+             remove=T,
+             crs="WGS84")
+
+# assign the variable to the initial file. The order of the rows is kept the same
+hilda_ext <- extract(hilda,sf_hilda)[, -1,drop=FALSE]
+colnames(hilda_ext) <- "hilda_id"
+
+metadata_aridity <- cbind(metadata_aridity,hilda_ext) |>
+    left_join(hilda_id_names)
+
+############################################################################
 ########################## world Clim #############################
+############################################################################
 
 metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_aridity))
 
@@ -317,6 +346,7 @@ for (f in world_clim_files){
     colnames(rast_ext) <- world_clim_variable
     metadata_world_clim <- cbind(metadata_world_clim,rast_ext)
 }
+
 
 ################################### geology ################################
 ### the original data have EPSF:2001 and encoding = ISO 8859-7. I changed them to 
