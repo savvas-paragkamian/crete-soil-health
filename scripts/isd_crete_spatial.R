@@ -114,6 +114,7 @@ aridity_crete <- rast("spatial_data/crete_aridity_index.tif")
 # some points have 0 value
 aridity_crete[aridity_crete[] == 0 ] = NA
 metadata_aridity <- metadata_spatial %>% dplyr::select(ENA_RUN) 
+
 locations_s <- locs2sf(do.call(rbind, st_geometry(metadata_aridity)))
 
 # merge the points move to closest valued cell
@@ -177,7 +178,8 @@ hwsd2 <- rast("spatial_data/hwsd2_crete/hwsd2_crete.tif")
 # with trimws the leading spaces are removed for the values.
 HWSD2_wrb4 <- read_delim("spatial_data/hwsd2_crete/HWSD2_D_WRB4.tsv", delim="\t") |>
     mutate(VALUE=trimws(VALUE)) |>
-    distinct(VALUE, CODE) 
+    distinct(VALUE, CODE) |>
+    rename("HWSD2_value"="VALUE")
 
 HWSD2_SMU <- read_delim("spatial_data/hwsd2_crete/HWSD2_SMU.tsv", delim="\t") |>
     distinct(HWSD2_SMU_ID, WRB4) |>
@@ -188,7 +190,8 @@ HWSD2_SMU <- read_delim("spatial_data/hwsd2_crete/HWSD2_SMU.tsv", delim="\t") |>
 check.coords <- points2nearestcell(locations_s, hwsd2)
 
 # assign the variable to the initial file. The order of the rows is kept the same
-HWSD2_SMU_ID <- extract(hwsd2,metadata_aridity)[, -1,drop=FALSE]
+HWSD2_SMU_ID <- extract(hwsd2,metadata_aridity)[, -1,drop=FALSE] |>
+    left_join(HWSD2_SMU, by=c("HWSD2"="HWSD2_SMU_ID"))
 
 metadata_aridity <- cbind(metadata_aridity,HWSD2_SMU_ID) 
 
