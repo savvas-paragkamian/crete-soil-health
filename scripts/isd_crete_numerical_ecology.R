@@ -20,6 +20,8 @@
 #library(phyloseq)
 source("scripts/functions.R")
 library(vegan)
+library(sf)
+library(terra)
 library(ape)
 library(dplyr)
 library(tibble)
@@ -37,17 +39,9 @@ community_matrix <- readRDS("results/community_matrix.RDS")
 asv_metadata <- read_delim("results/asv_metadata.tsv", delim="\t")
 
 # Metadata
-
-master_metadata_old <- read.delim("Crete/Composite_MetaData_from_master.csv", sep=",")
-
 metadata <- read_delim("results/sample_metadata.tsv", delim="\t")
 
-# differences of old and new data
-
-master_metadata_old$team_site_location_id[which(!(master_metadata_old$team_site_location_id %in% metadata$source_material_identifiers))]
-
 ######
-###
 metadata <- metadata %>% filter(ENA_RUN %in% rownames(community_matrix))
 
 ### 
@@ -164,7 +158,6 @@ pcoa_bray <- ape::pcoa(bray)
 pcoa_bray_m <- pcoa_bray$vectors %>% as.data.frame() %>% rownames_to_column("ENA_RUN")
 
 write_delim(pcoa_bray_m,"results/ordination_pcoa_bray_sites.tsv", delim="\t")
-
 
 ####################### nMDS #########################
 print("starting nMDS")
@@ -309,6 +302,7 @@ kruskal.test(UMAP2 ~ geology_na, data = metadata)
 kruskal.test(UMAP2 ~ elevation_bin, data = metadata)
 kruskal.test(UMAP2 ~ geology_na, data = metadata)
 kruskal.test(UMAP2 ~ LABEL3, data = metadata)  
+
 cor.test(metadata$UMAP2, metadata$total_organic_carbon)
 cor.test(metadata$UMAP2, metadata$total_nitrogen)
 cor.test(metadata$UMAP2, metadata$water_content)
@@ -316,12 +310,14 @@ gradient_scatterplot(metadata, "water_content","UMAP2", "none")
 gradient_scatterplot(metadata, "total_nitrogen","UMAP2", "none") 
 gradient_scatterplot(metadata, "total_organic_carbon","UMAP2", "none") 
 boxplot_single(metadata, "UMAP2","LABEL3", "total_organic_carbon")
+
 ####### Drivers categorical
 kruskal.test(shannon ~ vegetation_zone, data = metadata)
 kruskal.test(shannon ~ elevation_bin, data = metadata)
 kruskal.test(shannon ~ aridity_class, data = metadata)
 kruskal.test(shannon ~ LABEL2, data = metadata)
 kruskal.test(shannon ~ LABEL3, data = metadata)
+
 pairwise.wilcox.test(metadata$shannon, metadata$LABEL3, p.adjust.method="BH")
 
 kruskal.test(shannon ~ geology_na, data = metadata)
@@ -363,7 +359,6 @@ png("figures/community_betadisper_geology.png",
     height=40,
     unit="cm")
 plot(mod.HSD)
-
 dev.off()
 
 # total nitrogen
@@ -474,48 +469,316 @@ print("starting co-occurrence")
 ## echo R_MAX_VSIZE=200Gb >> .Renviron
 
 #asv_cooccur <- biodiversity_m %*% t(biodiversity_m)
-community_matrix_m <- community_matrix
-community_matrix_m[community_matrix_m > 0] <- 1
-community_matrix_m <- as.matrix(community_matrix_m)
+#community_matrix_m <- community_matrix
+#community_matrix_m[community_matrix_m > 0] <- 1
+#community_matrix_m <- as.matrix(community_matrix_m)
 
-sample_cooccur <- community_matrix_m %*% t(community_matrix_m)
-taxa_cooccur <- t(community_matrix_m) %*% community_matrix_m
+#sample_cooccur <- community_matrix_m %*% t(community_matrix_m)
+#taxa_cooccur <- t(community_matrix_m) %*% community_matrix_m
 
-isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
-taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
+#isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
+#taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
 
-taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
-    filter(rowname!=colname) %>%
-    na.omit()
+#taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
+#    filter(rowname!=colname) %>%
+#    na.omit()
 
-write_delim(taxa_cooccur_l,"results/taxa_cooccur_l.tsv", delim="\t")
+#write_delim(taxa_cooccur_l,"results/taxa_cooccur_l.tsv", delim="\t")
 
-isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
-sample_cooccur[lower.tri(sample_cooccur)] <- NA
+#isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
+#sample_cooccur[lower.tri(sample_cooccur)] <- NA
 
-sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
-    filter(rowname!=colname) %>%
-    na.omit() %>% 
-    left_join(bray_l,
-              by=c("rowname"="rowname", "colname"="colname")) %>%
-    left_join(jaccard_l,
-              by=c("rowname"="rowname", "colname"="colname")) %>%
-    left_join(aitchison_l,
-              by=c("rowname"="rowname", "colname"="colname"))
+#sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
+#    filter(rowname!=colname) %>%
+#    na.omit() %>% 
+#    left_join(bray_l,
+#              by=c("rowname"="rowname", "colname"="colname")) %>%
+#    left_join(jaccard_l,
+#              by=c("rowname"="rowname", "colname"="colname")) %>%
+#    left_join(aitchison_l,
+#              by=c("rowname"="rowname", "colname"="colname"))
 
 
-write_delim(sample_cooccur_l,"results/sample_cooccur_l.tsv", delim="\t")
+#write_delim(sample_cooccur_l,"results/sample_cooccur_l.tsv", delim="\t")
+
+
 ######################## Site locations comparison ASV #################
-samples_locations <- metadata %>%
-    pivot_wider(id_cols=sites,
-                names_from=location,
-                values_from=ENA_RUN)
+#samples_locations <- metadata %>%
+#    pivot_wider(id_cols=sites,
+#                names_from=location,
+#                values_from=ENA_RUN)
+#
+#
+#dissi_loc <- samples_locations %>%
+#    left_join(sample_cooccur_l,
+#              by=c("loc_1"="rowname", "loc_2"="colname"))
+#
+#summary(dissi_loc)
+#
+########################################################################
+###########------- Spatial Summary Table ------------- #################
+########################################################################
+
+##  load map data
+crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
+
+crete_area <- data.frame(name="Crete",
+                         area=sum(units::set_units(st_area(crete_shp), km^2)),map="GDAM")
+# ---------------------------#
+### protected areas
+# ---------------------------#
+wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") |>
+    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG))
+
+wdpa_crete_wildlife <- wdpa_crete |>
+    filter(DESIG_ENG=="Wildlife Refuge")
+
+wdpa_crete$area <- units::set_units(st_area(wdpa_crete),km^2)
+
+wdpa_crete_all <- data.frame(name="total protected", 
+                             area=sum(wdpa_crete$area))
+
+wdpa_crete_combine <- st_union(wdpa_crete) %>%
+    st_make_valid() %>%
+    st_as_sf() %>%
+    filter(st_geometry_type(.) %in% c("MULTIPOLYGON"))
+
+wdpa_crete_combine_area <- data.frame(name="total protected (no overlap)",
+                                      area=sum(units::set_units(st_area(wdpa_crete_combine), km^2)))
 
 
-dissi_loc <- samples_locations %>%
-    left_join(sample_cooccur_l,
-              by=c("loc_1"="rowname", "loc_2"="colname"))
+protected_area <- wdpa_crete |> 
+    group_by(DESIG_ENG) |>
+    summarise(area=sum(area)) |>
+    st_drop_geometry() |>
+    dplyr::rename("name"="DESIG_ENG") |>
+    bind_rows(wdpa_crete_all, wdpa_crete_combine_area) |>
+    arrange(area) |>
+    mutate(area=round(area,2)) |>
+    mutate(map="wdpa")
 
-summary(dissi_loc)
+# ---------------------------#
+# Corine Land Cover Label2
+# ---------------------------#
+
+clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
+
+clc_crete_shp$area <- units::set_units(st_area(clc_crete_shp),km^2)
+
+clc_crete_shp_area <- clc_crete_shp |>
+    st_drop_geometry() |>
+    group_by(LABEL2) |>
+    summarise(area=sum(area)) |>
+    dplyr::rename("name"="LABEL2") |>
+    mutate(map="CLC")
+
+# ---------------------------#
+# geology #
+# ---------------------------#
+crete_geology <- st_read("spatial_data/crete_geology/crete_geology.shp") |>
+    st_make_valid()
+
+geol_df <- data.frame(
+  symbol = c(
+    "J-E",
+    "K-E",
+    "K.k",
+    "K.m",
+    "Mk",
+    "Mm.I",
+    "Ph-T",
+    "Q.al",
+    "T.br",
+    "f",
+    "fo",
+    "ft",
+    "o"
+  ),
+  name = c(
+    "Plattenkalk",
+    "Limestone of Pindos",
+    "Limestone of Tripolis",
+    "Carbonaceous Allochthonous",
+    "Neogenic",
+    "Neogenic",
+    "Phyllites - Chalazites",
+    "Quaternary alluvium",
+    "Limestone of Tripolis",
+    "Schale",
+    "Schale of Pindos",
+    "Flysch of Tripolis",
+    "Ophiolite Complex Allochthonous"
+  ),
+  stringsAsFactors = FALSE
+)
+# area calculation
+crete_geology$area <- units::set_units(st_area(crete_geology),km^2)
+
+crete_geology_area <- crete_geology |>
+    st_drop_geometry() |>
+    group_by(geology_na) |>
+    summarise(area=sum(area)) |>
+    #left_join(geol_df,by=c("geology_na"="symbol")) |>
+    na.omit() |>
+    mutate(name=geology_na) |>
+    #mutate(name=paste0(name," (",geology_na,")")) |>
+    dplyr::select(-geology_na) |>
+    mutate(map="Geology")
+
+# ---------------------------#
+# hilda 1976 - 2016
+# ---------------------------#
+
+hilda <- rast("spatial_data/hilda_1976_2016/hilda_1976_2016.tif")
+# make 0 as NA 
+hilda[hilda == 0] <- NA
+# the size of each cell
+hilda_a <- cellSize(hilda, unit="km")
+# calculation per category
+hilda_area <- zonal(hilda_a, hilda, fun="sum", na.rm=F)
+
+hilda_id_names <- read_delim("spatial_data/hilda_1976_2016/hilda_transitions_names.tsv", delim="\t")
+
+hilda_area <- hilda_area |>
+    left_join(hilda_id_names, by=c("lyr.1"="hilda_id")) |>
+    dplyr::select(-lyr.1) |>
+    mutate(area=round(units::set_units(area,km^2),digits=0)) |>
+    mutate(map="Hilda+ 1976-2016") |>
+    rename("name"="hilda_name")
+
+# ---------------------------#
+# raster global aridity index
+# ---------------------------#
+aridity_crete <- rast("spatial_data/crete_aridity_index.tif")
+aridity_crete[aridity_crete[] == 0 ] = NA
+
+# Define the breaks and labels
+brks <- c(0, 300, 2000, 5000, 6500, 9000)
+labs <- c("Hyper Arid", "Arid", "Semi-Arid", "Dry sub-humid", "Humid")
+
+# Reclassify using cut() through app()
+aridity_class <- app(aridity_crete, \(x)
+  cut(x,
+      breaks = brks,
+      include.lowest = TRUE,
+      right = FALSE,
+      labels = FALSE)
+)
+# make factor
+aridity_class <- as.factor(aridity_class)
+# add the labels
+levels(aridity_class) <- data.frame(ID = 1:length(labs), label = labs)
+
+# the size of each cell
+aridity_class_a <- cellSize(aridity_class, unit="km")
+# calculation per category
+aridity_class_area <- zonal(aridity_class_a, aridity_class, fun="sum", na.rm=F)
+
+aridity_class_area <- aridity_class_area |>
+    mutate(map="Aridity") |>
+    mutate(area=round(units::set_units(area,km^2),digits=0)) |>
+    rename("name"="label")
+
+# ---------------------------#
+# raster desertification and Environmental Sensitive Areas Index
+# ---------------------------#
+desertification_crete <- rast("spatial_data/crete_desertification_risk/esa3rdp_crete.tif")
+# the size of each cell
+desertification_crete_a <- cellSize(desertification_crete, unit="km")
+# calculation per category
+desertification_crete_area <- zonal(desertification_crete_a, desertification_crete, fun="sum", na.rm=F)
+
+desertification_crete_area <- desertification_crete_area |> 
+    mutate(map="Desertification") |>
+    mutate(area=round(units::set_units(area,km^2),digits=0)) |>
+    rename("name"="ESA_12CL")
+
+# ---------------------------#
+# soil erosion G2
+# ---------------------------#
+soil_erosion_g2 <- rast("spatial_data/crete_soil_erosion_g2.tif")
+# the size of each cell
+soil_erosion_g2_a <- cellSize(soil_erosion_g2, unit="km")
+# calculation per category
+g2_area <- zonal(soil_erosion_g2_a, soil_erosion_g2, fun="sum", na.rm=F)
+
+g2_area <- g2_area |>
+    mutate(map="Soil Erosion G2") |>
+    mutate(area=round(units::set_units(area,km^2),digits=0)) |>
+    rename("name"="crete_soil_erosion_g2")
+
+# ---------------------------#
+# harmonised world soil database v2
+# ---------------------------#
+hwsd2 <- rast("spatial_data/hwsd2_crete/hwsd2_crete.tif")
+# the size of each cell
+hwsd2_a <- cellSize(hwsd2, unit="km")
+# calculation per category
+hwsd2_area <- zonal(hwsd2_a, hwsd2, fun="sum", na.rm=F)
+
+# hswd metadata
+# with trimws the leading spaces are removed for the values.
+HWSD2_wrb4 <- read_delim("spatial_data/hwsd2_crete/HWSD2_D_WRB4.tsv", delim="\t") |>
+    mutate(VALUE=trimws(VALUE)) |>
+    distinct(VALUE, CODE) 
+
+HWSD2_SMU <- read_delim("spatial_data/hwsd2_crete/HWSD2_SMU.tsv", delim="\t") |>
+    distinct(HWSD2_SMU_ID, WRB4) |>
+    left_join(HWSD2_wrb4, by=c("WRB4"="CODE"))
+
+hwsd2_area <-hwsd2_area |>
+    left_join(HWSD2_SMU, by=c("HWSD2"="HWSD2_SMU_ID")) |>
+    mutate(area=round(units::set_units(area,km^2),digits=0)) |>
+    na.omit() |>
+    group_by(VALUE) |>
+    summarise(area=sum(area)) |>
+    mutate(map="HWSD2") |>
+    rename("name"="VALUE")
+
+###################### calculate summary ##################
+maps <- list(protected_area,
+             clc_crete_shp_area,
+             crete_geology_area,
+             hilda_area,
+             aridity_class_area,
+             desertification_crete_area,
+             g2_area,
+             hwsd2_area,
+             crete_area)
+
+maps_area <- bind_rows(maps)
+
+write_delim(maps_area, "results/maps_area_summary.tsv",delim="\t")
+
+###################### sample summary ##################
+classes <- c("LABEL2", "geology_na", "HWSD2_value","ESA_12CL", "aridity_class","hilda_name","erosion_g2","SPA","SAC","Wildlife_Refuge")
+
+classes_samples <- list()
+
+for (i in seq_along(classes)){
+    print(i)
+    classes_samples[[i]] <- metadata |> 
+        group_by(metadata[[classes[i]]]) |>
+        summarise(samples=n(),
+                  taxa_richness=sum(taxa),
+                  asv_richness=sum(asvs),
+                  mean_shannon=mean(shannon),
+                  sd_shannon=sd(shannon)) |>
+        na.omit()
+}
+
+samples_total <- do.call(rbind, classes_samples) 
+colnames(samples_total)[1] <- c("name")
+
+area_total <- maps_area |>
+    left_join(samples_total) |>
+    mutate(area=round(area, digits=1),
+           mean_shannon=round(mean_shannon, digits=2),
+           sd_shannon=round(sd_shannon, digits=2)) |>
+    mutate(across(everything(), ~ replace_na(.x, 0)))
+
+write_delim(area_total, "results/data_cube_summary_table.tsv", delim="\t")
+
+#area_total |> arrange(category, class, area) |> kbl() |> kable_styling(latex_options = "scale_down")
 
 print("finish")
