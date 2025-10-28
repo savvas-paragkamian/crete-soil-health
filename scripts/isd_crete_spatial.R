@@ -79,12 +79,21 @@ crete_bbox_b_ext <- st_sf(st_as_sfc(crete_bbox_b))
 ######### other spatial data
 clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
 natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
-wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp")
-wdpa_crete_wildlife <- wdpa_crete %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
-    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG))
 
-natura_crete_land <- st_intersection(natura_crete, crete_shp)
-natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
+wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp")
+
+wdpa_crete_wildlife <- wdpa_crete %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
+    mutate(DESIG_ENG = gsub("Wildlife Refugee", "Wildlife Refuge", DESIG_ENG)) |>
+    dplyr::select(DESIG_ENG, geometry) |>
+    rename("Wildlife_Refuge"="DESIG_ENG")
+
+wdpa_crete_sac <- wdpa_crete %>% filter(DESIG_ENG=="Special Areas of Conservation (Habitats Directive)") |>
+    dplyr::select(DESIG_ENG, geometry) |>
+    rename("SAC"="DESIG_ENG")
+
+wdpa_crete_spa <- wdpa_crete %>% filter(DESIG_ENG=="Special Protection Area (Birds Directive)") |>
+    dplyr::select(DESIG_ENG, geometry) |>
+    rename("SPA"="DESIG_ENG")
 
 ##################################################################
 # raster DEM hangling
@@ -367,19 +376,17 @@ metadata_spatial <- metadata_spatial %>% left_join(nearest_geology_join,join_by(
 metadata_spatial <- metadata_spatial %>% left_join(st_drop_geometry(metadata_world_clim))
 
 metadata_spatial <- st_join(metadata_spatial, clc_crete_shp, left=T) #%>%
-metadata_spatial <- st_join(metadata_spatial, natura_crete_land_sci, left=T)
+metadata_spatial <- st_join(metadata_spatial, wdpa_crete_spa, left=T)
+metadata_spatial <- st_join(metadata_spatial, wdpa_crete_sac, left=T)
 metadata_spatial <- st_join(metadata_spatial, wdpa_crete_wildlife, left=T)
 
 
 metadata <- metadata_spatial %>% 
     st_drop_geometry() %>% 
-    dplyr::select(-c(PER.y, PER.x, MS, INSPIRE_ID, RELEASE_DA,Remark)) %>%
     mutate(elevation_bin=cut(elevation, 
                              breaks=seq.int(from=0, to=2500, by=200),
                              dig.lab = 5 )) %>%
-    mutate(protection_status = ifelse(is.na(SITETYPE) & is.na(DESIG_ENG), "none",
-                                      ifelse(SITETYPE=="B" & is.na(DESIG_ENG),"Natura2000",
-                                             ifelse(is.na(SITETYPE) & DESIG_ENG=="Wildlife Refuge", "Wildlife Refuge", "both"))))
+    mutate(protection_status = ifelse(is.na(SPA) & is.na(SAC) & is.na(Wildlife_Refuge), "none","protected"))
 
 write_delim(metadata,"results/metadata_spatial.tsv", delim="\t")
 
