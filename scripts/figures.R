@@ -30,7 +30,7 @@
 #   b) ratios
 # 5. Differential abundance
 #   a) read files
-#   b) heatmap
+#   b) ratios
 #
 ###############################################################################
 # time: takes ~1 hour because of the many maps produced
@@ -46,6 +46,7 @@ library(vegan)
 library(tidyverse)
 library(ggnewscale)
 library(ggpubr)
+library(ggrepel)
 library(patchwork)
 library(pheatmap)
 library(sf)
@@ -94,7 +95,7 @@ wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(D
 natura_crete_land <- st_intersection(natura_crete, crete_shp)
 natura_crete_land_sci <- natura_crete_land %>% filter(SITETYPE=="B")
 
-#G2 model from the paper 
+################# G2 model from the paper ####################
 # Seasonal monitoring of soil erosion at regional scale:
 # An application of the G2 model in Crete focusing on agricultural land uses
 g2_model_all <- terra::rast("spatial_data/1-s2.0-S0303243413001116-mmc1.kmz")
@@ -182,9 +183,9 @@ hwsd2_df <- hwsd2_df |>
 
 
 ##### hilda transitions 40 years
-hilda_id_names <- read_delim("spatial_data/hilda_1978_2018/hilda_1978_2018.tsv", delim="\t")
+hilda_id_names <- read_delim("spatial_data/hilda_1976_2016/hilda_1976_2016.tsv", delim="\t")
 
-hilda_1978_2018 <- st_read("spatial_data/hilda_1978_2018/hilda_1978_2018.shp") |>
+hilda_1976_2016 <- st_read("spatial_data/hilda_1976_2016/hilda_1976_2016.shp") |>
     filter(lyr_1>0) |>
     left_join(hilda_id_names, by=c("lyr_1"="lyr.1"))
 #### protected areas
@@ -1184,7 +1185,7 @@ hilda_colors <- c("pasture/rangeland (stable)" = "#F4C430",  # Gold
 
 crete_hilda_g <- ggplot() +
     geom_sf(crete_shp, mapping=aes()) +
-    geom_sf(hilda_1978_2018,
+    geom_sf(hilda_1976_2016,
             mapping=aes(fill=hilda_name),
             alpha=1,
             colour="transparent",
@@ -1669,6 +1670,7 @@ ggsave("figures/taxonomy_representative_phyla_box_arid_f.png",
        height = 40,
        width = 40,
        units="cm")
+
 ############################ Heatmap distribution Phyla Samples ############################
 phyla_samples_w_z <- phyla_samples_summary %>%
     pivot_wider(id_cols=ENA_RUN,
@@ -2110,6 +2112,7 @@ for (var in vars){
 # abiotic pairs scatterplots
 abiotic <- c("total_nitrogen",
              "water_content",
+             "aridity",
              "total_organic_carbon",
              "carbon_nitrogen_ratio",
              "sample_volume_or_weight_for_DNA_extraction",
@@ -2126,6 +2129,9 @@ cats <- c("vegetation_zone",
           "LABEL1",
           "LABEL2",
           "LABEL3",
+          "erosion_g2",
+          "hilda_name",
+          "HWSD2_value",
           "aridity_class",
           "elevation_bin",
           "cluster",
@@ -2380,7 +2386,225 @@ ggsave("figures/ordination_nmds_genera_plot_f.png",
        units="cm")
 
 
-############################## 4. Functional profiles ############################
+############################## 4. Statistics ############################
+
+#-------------------------- kruskal -------------------------#
+kw_hm <- read_delim( "results/stats_maps_kw.tsv", delim="\t")
+
+kruskal_g <- ggplot(kw_hm, aes(x = factor, y = variable, fill = logp)) +
+    geom_tile() +
+    geom_text(aes(label = sig), size = 3) +
+    scale_fill_gradient2(
+                         name = "-log10(p_adj)", na.value = "grey90",
+                         breaks = pretty_breaks(n = 6)
+                         ) +
+    coord_fixed() +
+    labs(x = "", y = "Community and Diveristy indices", title="Kruskal-Wallis rank sum test")+
+    theme_bw() +
+    theme(
+          axis.text.x = element_text(angle = 40, hjust = 1),
+          panel.grid = element_blank()
+    )
+
+ggsave("figures/community_kruskal_maps_heatmap_plot.png",
+       plot=kruskal_g,
+       device="png",
+       height = 20,
+       width = 23,
+       units="cm")
+#-------------------------- permanova -------------------------#
+
+permanova_results <- read_delim("results/stats_permanova_results.tsv", delim="\t")
+
+permanova_g <- ggplot(permanova_results, aes(x = factor, y = R2, size = logp)) +
+  geom_point(alpha = 0.8) +
+  scale_size_continuous(name = "-log10(p_adj)") +
+  labs(x = NULL, y = "Effect size (R²)", title = "PERMANOVA effects (R² vs significance)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank())+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("figures/community_permanova_bubble_plot.png",
+       plot=permanova_g,
+       device="png",
+       height = 10,
+       width = 30,
+       units="cm")
+
+figure_5 <- kruskal_g / permanova_g +
+  plot_layout(heights = c(1,0.5)) +
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag = element_text(size = 18),
+        plot.background = element_rect(fill = "white", colour = NA))
+
+ggsave("figures/fig_isd_community_stats.png", 
+       plot=figure_5, 
+       height = 20, 
+       width = 20,
+       dpi = 600, 
+       units="cm",
+       device="png")
+
+
+#----------------------- Differential Abundance -------------------------#
+
+# aridity class
+## read data
+ancombc2_aridity_class <- readRDS("results/ancombc2/ancombc2_aridity_class_results.RDS")
+
+
+# feature table summary 
+ancombc2_arid_f <- ancombc2_aridity_class$feature_table 
+
+ancombc2_arid_taxa <- ancombc2_arid_f |>
+    as.data.frame() |>
+    rownames_to_column(var="taxon") |>
+    as_tibble() |>
+    mutate(reads = rowSums(across(where(is.numeric)), na.rm = TRUE)) |>
+    mutate(n_samples = rowSums(across(starts_with("ER")) > 0, na.rm = TRUE)) |>
+    dplyr::select(taxon,reads,n_samples) |>
+    filter(reads>100)
+    
+
+# keep only results
+ancombc2_arid_r <- ancombc2_aridity_class$res
+# transform to long format
+# note that ancombc2 uses one class as baseline. here is Dry sub-humid
+ancombc2_arid_long <- ancombc2_arid_r %>%
+    dplyr::select(taxon, starts_with("lfc_"), starts_with("p_")) %>%
+    pivot_longer(
+                 cols = -taxon,
+                 names_to = c(".value", "aridity_class"),
+                 names_pattern = "(lfc|p)_(?:aridity_class)?(.*)"
+                 ) %>%
+    mutate(
+           aridity_class = ifelse(aridity_class == "(Intercept)","Dry sub-humid", aridity_class)
+    )
+
+# data preparation for plot
+ancombc2_arid_long_g <- ancombc2_arid_long |>
+    group_by(aridity_class) |>
+    mutate(
+           logp  = -log10(pmax(p, .Machine$double.xmin)),  # avoid -Inf
+           sig   = case_when(
+                             p < 0.05 & lfc > 0  ~ "Up (FDR<0.05)",
+                             p < 0.05 & lfc < 0  ~ "Down (FDR<0.05)",
+                             TRUE                    ~ "NS")
+           ) |>
+    ungroup() |>
+    mutate(
+           aridity_class = factor(
+                                  aridity_class,
+                                  levels = c("Semi-Arid","Dry sub-humid","Humid")  # set your order
+           )) |>
+    filter(taxon %in% ancombc2_arid_taxa$taxon) |>
+    left_join(ancombc2_arid_taxa)
+
+# for labels keep the top and tail of each sig category
+top_up <- ancombc2_arid_long_g %>%
+    filter(sig == "Up (FDR<0.05)") %>%
+    group_by(aridity_class) %>%
+    arrange(p, desc(abs(lfc)), .by_group = TRUE) %>%
+    slice_head(n = 10) %>%
+    ungroup()
+
+# and tail
+tail_down <- ancombc2_arid_long_g %>%
+    filter(sig == "Down (FDR<0.05)") %>%
+    group_by(aridity_class) %>%
+    arrange(logp, sort(lfc), .by_group = TRUE) %>%
+    slice_tail(n = 10) %>%   # take the “tail” 10 within the ordered list
+    ungroup()
+
+label_data_arid <- bind_rows(top_up,tail_down)
+
+
+# volcano plot
+ancombc2_arid_g <- ggplot() +
+    geom_point(ancombc2_arid_long_g, mapping = aes(x = lfc,
+                                              y = logp,
+                                              color=sig,
+                                              shape = sig,
+                                              size = n_samples), alpha = 0.6) +
+    geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +  # LFC guide
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +  # raw p=0.05 guide
+    geom_text_repel(
+                    data = label_data_arid,
+                    aes(x = lfc, y = logp,
+                        label = taxon, color = sig),
+                    size = 2.5,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.5,
+                    seed = 123                # reproducible placement
+                    ) +
+    facet_wrap(~ aridity_class, nrow = 1, scales = "free_y") +
+    scale_color_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = "#D55E00",   # orange-red
+                                  "Down (FDR<0.05)" = "#0072B2", # blue
+                                  "NS" = "grey70"),
+                       guide="legend") +
+    scale_shape_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = 16,  # filled circle
+                                  "Down (FDR<0.05)" = 17, # triangle
+                                  "NS" = 1               # open circle
+                                  ),
+                       guide = "legend"
+                       ) +
+    scale_size_continuous(
+                           range = c(0.8, 3.5),                   # smaller overall point size range
+                           breaks = c(10, 20, 40, 80, 130),      # more granularity in legend
+                           guide = guide_legend(
+                                                title = "# samples",
+                                                title.position = "left",
+                                                override.aes = list(shape = 16),
+                                                keyheight = unit(3, "mm"),           # smaller legend keys
+                                                keywidth = unit(3, "mm"),
+                                                label.position = "right")
+                           ) +
+    guides(
+           color = guide_legend(title = "Significance", override.aes = list(shape = c(16, 17, 1))),
+           shape = "none"  # hide the second legend
+           ) +
+    labs(
+         x = "Log fold-change (lfc)",
+         y = expression(-log[10](p)),
+         shape = NULL,
+         #title = "Volcano plots by aridity class",
+         size = "# samples"
+         ) +
+    theme_bw() +
+    theme(
+          panel.grid = element_blank(),
+          strip.background = element_rect(fill = NA),
+          legend.position = "bottom")
+
+ggsave("figures/community_diffential_aridity_class.png", 
+       plot=ancombc2_arid_g, 
+       height = 10, 
+       width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+
+
+
+ancombc2_esa_class <- readRDS("results/ancombc2/ancombc2_esa_results.RDS")
+
+ancombc2_label2 <- readRDS("results/ancombc2/ancombc2_label2_results.RDS")
+
+ancombc2_label3 <- readRDS("results/ancombc2/ancombc2_label3_results.RDS")
+
+ancombc2_geology <- readRDS("results/ancombc2/ancombc2_geology_results.RDS")
+
+############################## 5. Functional profiles ############################
 ### function
 print("4. Functional profiles")
 clr <- function(x, na.rm = FALSE) {
