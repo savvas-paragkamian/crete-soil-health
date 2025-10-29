@@ -87,6 +87,7 @@ crete_peaks <- read_delim("spatial_data/crete_mountain_peaks.csv", delim=";", co
              crs="WGS84")
 
 clc_crete_shp <- st_read("spatial_data/clc_crete_shp/clc_crete_shp.shp")
+
 crete_geology <- st_read("spatial_data/crete_geology/crete_geology.shp")
 natura_crete <- sf::st_read("spatial_data/natura2000/natura2000_crete.shp")
 wdpa_crete <- sf::st_read("spatial_data/wdpa_crete/wdpa_crete.shp") %>% filter(DESIG_ENG=="Wildlife Refugee") %>%
@@ -2463,7 +2464,7 @@ ancombc2_arid_taxa <- ancombc2_arid_f |>
     mutate(reads = rowSums(across(where(is.numeric)), na.rm = TRUE)) |>
     mutate(n_samples = rowSums(across(starts_with("ER")) > 0, na.rm = TRUE)) |>
     dplyr::select(taxon,reads,n_samples) |>
-    filter(reads>100)
+    filter(reads>100 , taxon!="Chloroplast")
     
 
 # keep only results
@@ -2525,7 +2526,7 @@ ancombc2_arid_g <- ggplot() +
                                               y = logp,
                                               color=sig,
                                               shape = sig,
-                                              size = n_samples), alpha = 0.6) +
+                                              size = n_samples), alpha = 0.7) +
     geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +  # LFC guide
     geom_hline(yintercept = -log10(0.05), linetype = "dashed") +  # raw p=0.05 guide
     geom_text_repel(
@@ -2593,16 +2594,578 @@ ggsave("figures/community_diffential_aridity_class.png",
        units="cm",
        device="png")
 
-
-
+# ------------------ Desertification ------------------#
 
 ancombc2_esa_class <- readRDS("results/ancombc2/ancombc2_esa_results.RDS")
 
-ancombc2_label2 <- readRDS("results/ancombc2/ancombc2_label2_results.RDS")
+# keep only results
+ancombc2_esa_r <- ancombc2_esa_class$res
 
-ancombc2_label3 <- readRDS("results/ancombc2/ancombc2_label3_results.RDS")
+# feature table summary 
+ancombc2_esa_f <- ancombc2_esa_class$feature_table 
 
-ancombc2_geology <- readRDS("results/ancombc2/ancombc2_geology_results.RDS")
+ancombc2_esa_taxa <- ancombc2_esa_f |>
+    as.data.frame() |>
+    rownames_to_column(var="taxon") |>
+    as_tibble() |>
+    mutate(reads = rowSums(across(where(is.numeric)), na.rm = TRUE)) |>
+    mutate(n_samples = rowSums(across(starts_with("ER")) > 0, na.rm = TRUE)) |>
+    dplyr::select(taxon,reads,n_samples) |>
+    filter(reads>100 , taxon!="Chloroplast")
+
+# transform to long format
+# note that ancombc2 uses one class as baseline. here is Dry sub-humid
+ancombc2_esa_long <- ancombc2_esa_r %>%
+    dplyr::select(taxon, starts_with("lfc_"), starts_with("p_")) %>%
+    pivot_longer(
+                 cols = -taxon,
+                 names_to = c(".value", "ESA_12CL"),
+                 names_pattern = "(lfc|p)_(?:ESA_12CL)?(.*)"
+                 ) %>%
+    mutate(
+           esa_class = ifelse(ESA_12CL == "(Intercept)","C1", ESA_12CL)
+    )
+
+# data preparation for plot
+ancombc2_esa_long_g <- ancombc2_esa_long |>
+    group_by(esa_class) |>
+    mutate(
+           logp  = -log10(pmax(p, .Machine$double.xmin)),  # avoid -Inf
+           sig   = case_when(
+                             p < 0.05 & lfc > 0  ~ "Up (FDR<0.05)",
+                             p < 0.05 & lfc < 0  ~ "Down (FDR<0.05)",
+                             TRUE                    ~ "NS")
+           ) |>
+    ungroup() |>
+    mutate(
+           esa_class = factor(
+                                  esa_class,
+                                  levels = c("P","F1","F2","F3","C1","C2")  # set your order
+           )) |>
+    filter(taxon %in% ancombc2_esa_taxa$taxon) |>
+    left_join(ancombc2_esa_taxa)
+
+# for labels keep the top and tail of each sig category
+top_up <- ancombc2_esa_long_g %>%
+    filter(sig == "Up (FDR<0.05)") %>%
+    group_by(esa_class) %>%
+    arrange(p, desc(abs(lfc)), .by_group = TRUE) %>%
+    slice_head(n = 10) %>%
+    ungroup()
+
+# and tail
+tail_down <- ancombc2_esa_long_g %>%
+    filter(sig == "Down (FDR<0.05)") %>%
+    group_by(esa_class) %>%
+    arrange(logp, sort(lfc), .by_group = TRUE) %>%
+    slice_tail(n = 10) %>%   # take the “tail” 10 within the ordered list
+    ungroup()
+
+label_data_esa <- bind_rows(top_up,tail_down)
+
+# volcano plot
+ancombc2_esa_g <- ggplot() +
+    geom_point(ancombc2_esa_long_g, mapping = aes(x = lfc,
+                                              y = logp,
+                                              color=sig,
+                                              shape = sig,
+                                              size = n_samples), alpha = 0.7) +
+    geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +  # LFC guide
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +  # raw p=0.05 guide
+    geom_text_repel(
+                    data = label_data_esa,
+                    aes(x = lfc, y = logp,
+                        label = taxon, color = sig),
+                    size = 2.5,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.5,
+                    seed = 123                # reproducible placement
+                    ) +
+    facet_wrap(~ esa_class, nrow = 2, scales = "free_y") +
+    scale_color_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = "#D55E00",   # orange-red
+                                  "Down (FDR<0.05)" = "#0072B2", # blue
+                                  "NS" = "grey70"),
+                       guide="legend") +
+    scale_shape_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = 16,  # filled circle
+                                  "Down (FDR<0.05)" = 17, # triangle
+                                  "NS" = 1               # open circle
+                                  ),
+                       guide = "legend"
+                       ) +
+    scale_size_continuous(
+                           range = c(0.8, 3.5),                   # smaller overall point size range
+                           breaks = c(10, 20, 40, 80, 130),      # more granularity in legend
+                           guide = guide_legend(
+                                                title = "# samples",
+                                                title.position = "left",
+                                                override.aes = list(shape = 16),
+                                                keyheight = unit(3, "mm"),           # smaller legend keys
+                                                keywidth = unit(3, "mm"),
+                                                label.position = "right")
+                           ) +
+    guides(
+           color = guide_legend(title = "Significance", override.aes = list(shape = c(16, 17, 1))),
+           shape = "none"  # hide the second legend
+           ) +
+    labs(
+         x = "Log fold-change (lfc)",
+         y = expression(-log[10](p)),
+         shape = NULL,
+         #title = "Volcano plots by aridity class",
+         size = "# samples"
+         ) +
+    theme_bw() +
+    theme(
+          panel.grid = element_blank(),
+          strip.background = element_rect(fill = NA),
+          legend.position = "bottom")
+
+ggsave("figures/community_diffential_esa_class.png", 
+       plot=ancombc2_esa_g, 
+       height = 20, 
+       width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+# ------------------ Label2 ------------------#
+
+ancombc2_label2_class <- readRDS("results/ancombc2/ancombc2_label2_results.RDS")
+
+# keep only results
+ancombc2_label2_r <- ancombc2_label2_class$res
+
+# feature table summary 
+ancombc2_label2_f <- ancombc2_label2_class$feature_table 
+
+ancombc2_label2_taxa <- ancombc2_label2_f |>
+    as.data.frame() |>
+    rownames_to_column(var="taxon") |>
+    as_tibble() |>
+    mutate(reads = rowSums(across(where(is.numeric)), na.rm = TRUE)) |>
+    mutate(n_samples = rowSums(across(starts_with("ER")) > 0, na.rm = TRUE)) |>
+    dplyr::select(taxon,reads,n_samples) |>
+    filter(reads>100 , taxon!="Chloroplast")
+
+# transform to long format
+# note that ancombc2 uses one class as baseline. here is Dry sub-humid
+ancombc2_label2_long <- ancombc2_label2_r %>%
+    dplyr::select(taxon, starts_with("lfc_"), starts_with("p_")) %>%
+    pivot_longer(
+                 cols = -taxon,
+                 names_to = c(".value", "LABEL2"),
+                 names_pattern = "(lfc|p)_(?:LABEL2)?(.*)"
+                 )  %>%
+    mutate(
+           label2_class = ifelse(LABEL2 == "(Intercept)","Arable land", LABEL2)
+    )
+
+# data preparation for plot
+ancombc2_label2_long_g <- ancombc2_label2_long |>
+    group_by(label2_class) |>
+    mutate(
+           logp  = -log10(pmax(p, .Machine$double.xmin)),  # avoid -Inf
+           sig   = case_when(
+                             p < 0.05 & lfc > 0  ~ "Up (FDR<0.05)",
+                             p < 0.05 & lfc < 0  ~ "Down (FDR<0.05)",
+                             TRUE                    ~ "NS")
+           ) |>
+    ungroup() |>
+    mutate(
+           label2_class = factor(
+                                  label2_class,
+                                  levels = sort(unique(ancombc2_label2_long$label2_class))  # set your order
+           )) |>
+    filter(taxon %in% ancombc2_label2_taxa$taxon) |>
+    left_join(ancombc2_label2_taxa)
+
+# for labels keep the top and tail of each sig category
+top_up <- ancombc2_label2_long_g %>%
+    filter(sig == "Up (FDR<0.05)") %>%
+    group_by(label2_class) %>%
+    arrange(p, desc(abs(lfc)), .by_group = TRUE) %>%
+    slice_head(n = 10) %>%
+    ungroup()
+
+# and tail
+tail_down <- ancombc2_label2_long_g %>%
+    filter(sig == "Down (FDR<0.05)") %>%
+    group_by(label2_class) %>%
+    arrange(logp, sort(lfc), .by_group = TRUE) %>%
+    slice_tail(n = 10) %>%   # take the “tail” 10 within the ordered list
+    ungroup()
+
+label_data_label2 <- bind_rows(top_up,tail_down)
+
+# volcano plot
+ancombc2_label2_g <- ggplot() +
+    geom_point(ancombc2_label2_long_g, mapping = aes(x = lfc,
+                                              y = logp,
+                                              color=sig,
+                                              shape = sig,
+                                              size = n_samples), alpha = 0.7) +
+    geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +  # LFC guide
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +  # raw p=0.05 guide
+    geom_text_repel(
+                    data = label_data_label2,
+                    aes(x = lfc, y = logp,
+                        label = taxon, color = sig),
+                    size = 2.5,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.5,
+                    seed = 123                # reproducible placement
+                    ) +
+    facet_wrap(~ label2_class, nrow = 3, scales = "free_y") +
+    scale_color_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = "#D55E00",   # orange-red
+                                  "Down (FDR<0.05)" = "#0072B2", # blue
+                                  "NS" = "grey70"),
+                       guide="legend") +
+    scale_shape_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = 16,  # filled circle
+                                  "Down (FDR<0.05)" = 17, # triangle
+                                  "NS" = 1               # open circle
+                                  ),
+                       guide = "legend"
+                       ) +
+    scale_size_continuous(
+                           range = c(0.8, 3.5),                   # smaller overall point size range
+                           breaks = c(10, 20, 40, 80, 130),      # more granularity in legend
+                           guide = guide_legend(
+                                                title = "# samples",
+                                                title.position = "left",
+                                                override.aes = list(shape = 16),
+                                                keyheight = unit(3, "mm"),           # smaller legend keys
+                                                keywidth = unit(3, "mm"),
+                                                label.position = "right")
+                           ) +
+    guides(
+           color = guide_legend(title = "Significance", override.aes = list(shape = c(16, 17, 1))),
+           shape = "none"  # hide the second legend
+           ) +
+    labs(
+         x = "Log fold-change (lfc)",
+         y = expression(-log[10](p)),
+         shape = NULL,
+         #title = "Volcano plots by aridity class",
+         size = "# samples"
+         ) +
+    theme_bw() +
+    theme(
+          panel.grid = element_blank(),
+          strip.background = element_rect(fill = NA),
+          legend.position = "bottom")
+
+ggsave("figures/community_diffential_label2_class.png", 
+       plot=ancombc2_label2_g, 
+       height = 20, 
+       width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+# ------------------ Label3 ------------------#
+ancombc2_label3_class <- readRDS("results/ancombc2/ancombc2_label3_results.RDS")
+
+# keep only results
+ancombc2_label3_r <- ancombc2_label3_class$res
+
+# feature table summary 
+ancombc2_label3_f <- ancombc2_label3_class$feature_table 
+
+ancombc2_label3_taxa <- ancombc2_label3_f |>
+    as.data.frame() |>
+    rownames_to_column(var="taxon") |>
+    as_tibble() |>
+    mutate(reads = rowSums(across(where(is.numeric)), na.rm = TRUE)) |>
+    mutate(n_samples = rowSums(across(starts_with("ER")) > 0, na.rm = TRUE)) |>
+    dplyr::select(taxon,reads,n_samples) |>
+    filter(reads>100 , taxon!="Chloroplast")
+
+# transform to long format
+# note that ancombc2 uses one class as baseline. here is Dry sub-humid
+ancombc2_label3_long <- ancombc2_label3_r %>%
+    dplyr::select(taxon, starts_with("lfc_"), starts_with("p_")) %>%
+    pivot_longer(
+                 cols = -taxon,
+                 names_to = c(".value", "LABEL3"),
+                 names_pattern = "(lfc|p)_(?:LABEL3)?(.*)"
+                 )  %>%
+    mutate(
+           label3_class = ifelse(LABEL3 == "(Intercept)","Beaches, dunes, sands", LABEL3)
+    )
+
+# data preparation for plot
+ancombc2_label3_long_g <- ancombc2_label3_long |>
+    group_by(label3_class) |>
+    mutate(
+           logp  = -log10(pmax(p, .Machine$double.xmin)),  # avoid -Inf
+           sig   = case_when(
+                             p < 0.05 & lfc > 0  ~ "Up (FDR<0.05)",
+                             p < 0.05 & lfc < 0  ~ "Down (FDR<0.05)",
+                             TRUE                    ~ "NS")
+           ) |>
+    ungroup() |>
+    mutate(
+           label3_class = factor(
+                                  label3_class,
+                                  levels = sort(unique(ancombc2_label3_long$label3_class))  # set your order
+           )) |>
+    filter(taxon %in% ancombc2_label3_taxa$taxon) |>
+    left_join(ancombc2_label3_taxa)
+
+# for labels keep the top and tail of each sig category
+top_up <- ancombc2_label3_long_g %>%
+    filter(sig == "Up (FDR<0.05)") %>%
+    group_by(label3_class) %>%
+    arrange(p, desc(abs(lfc)), .by_group = TRUE) %>%
+    slice_head(n = 10) %>%
+    ungroup()
+
+# and tail
+tail_down <- ancombc2_label3_long_g %>%
+    filter(sig == "Down (FDR<0.05)") %>%
+    group_by(label3_class) %>%
+    arrange(logp, sort(lfc), .by_group = TRUE) %>%
+    slice_tail(n = 10) %>%   # take the “tail” 10 within the ordered list
+    ungroup()
+
+label_data_label3 <- bind_rows(top_up,tail_down)
+
+# volcano plot
+ancombc2_label3_g <- ggplot() +
+    geom_point(ancombc2_label3_long_g, mapping = aes(x = lfc,
+                                              y = logp,
+                                              color=sig,
+                                              shape = sig,
+                                              size = n_samples), alpha = 0.7) +
+    geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +  # LFC guide
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +  # raw p=0.05 guide
+    geom_text_repel(
+                    data = label_data_label3,
+                    aes(x = lfc, y = logp,
+                        label = taxon, color = sig),
+                    size = 2.5,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.5,
+                    seed = 123                # reproducible placement
+                    ) +
+    facet_wrap(~ label3_class, nrow = 5, scales = "free_y") +
+    scale_color_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = "#D55E00",   # orange-red
+                                  "Down (FDR<0.05)" = "#0072B2", # blue
+                                  "NS" = "grey70"),
+                       guide="legend") +
+    scale_shape_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = 16,  # filled circle
+                                  "Down (FDR<0.05)" = 17, # triangle
+                                  "NS" = 1               # open circle
+                                  ),
+                       guide = "legend"
+                       ) +
+    scale_size_continuous(
+                           range = c(0.8, 3.5),                   # smaller overall point size range
+                           breaks = c(10, 20, 40, 80, 130),      # more granularity in legend
+                           guide = guide_legend(
+                                                title = "# samples",
+                                                title.position = "left",
+                                                override.aes = list(shape = 16),
+                                                keyheight = unit(3, "mm"),           # smaller legend keys
+                                                keywidth = unit(3, "mm"),
+                                                label.position = "right")
+                           ) +
+    guides(
+           color = guide_legend(title = "Significance", override.aes = list(shape = c(16, 17, 1))),
+           shape = "none"  # hide the second legend
+           ) +
+    labs(
+         x = "Log fold-change (lfc)",
+         y = expression(-log[10](p)),
+         shape = NULL,
+         #title = "Volcano plots by aridity class",
+         size = "# samples"
+         ) +
+    theme_bw() +
+    theme(
+          panel.grid = element_blank(),
+          strip.background = element_rect(fill = NA),
+          legend.position = "bottom")
+
+ggsave("figures/community_diffential_label3_class.png", 
+       plot=ancombc2_label3_g, 
+       height = 30, 
+       width = 35,
+       dpi = 300, 
+       units="cm",
+       device="png")
+
+
+# ------------------ geology ------------------#
+
+ancombc2_geology_class <- readRDS("results/ancombc2/ancombc2_geology_results.RDS")
+
+# keep only results
+ancombc2_geology_r <- ancombc2_geology_class$res
+
+# feature table summary 
+ancombc2_geology_f <- ancombc2_geology_class$feature_table 
+
+ancombc2_geology_taxa <- ancombc2_geology_f |>
+    as.data.frame() |>
+    rownames_to_column(var="taxon") |>
+    as_tibble() |>
+    mutate(reads = rowSums(across(where(is.numeric)), na.rm = TRUE)) |>
+    mutate(n_samples = rowSums(across(starts_with("ER")) > 0, na.rm = TRUE)) |>
+    dplyr::select(taxon,reads,n_samples) |>
+    filter(reads>100 , taxon!="Chloroplast")
+
+# transform to long format
+# note that ancombc2 uses one class as baseline. here is Dry sub-humid
+ancombc2_geology_long <- ancombc2_geology_r %>%
+    dplyr::select(taxon, starts_with("lfc_"), starts_with("p_")) %>%
+    pivot_longer(
+                 cols = -taxon,
+                 names_to = c(".value", "geology_na"),
+                 names_pattern = "(lfc|p)_(?:geology_na)?(.*)"
+                 ) %>%
+    mutate(
+           geology_class = ifelse(geology_na == "(Intercept)","f", geology_na)
+    ) %>%
+    filter(geology_class != "total_nitrogen")
+
+# data preparation for plot
+ancombc2_geology_long_g <- ancombc2_geology_long |>
+    group_by(geology_class) |>
+    mutate(
+           logp  = -log10(pmax(p, .Machine$double.xmin)),  # avoid -Inf
+           sig   = case_when(
+                             p < 0.05 & lfc > 0  ~ "Up (FDR<0.05)",
+                             p < 0.05 & lfc < 0  ~ "Down (FDR<0.05)",
+                             TRUE                    ~ "NS")
+           ) |>
+    ungroup() |>
+    mutate(
+           geology_class = factor(
+                                  geology_class,
+                                  levels = sort(unique(ancombc2_geology_long$geology_class))  # set your order
+           )) |>
+    filter(taxon %in% ancombc2_geology_taxa$taxon) |>
+    left_join(ancombc2_geology_taxa)
+
+# for labels keep the top and tail of each sig category
+top_up <- ancombc2_geology_long_g %>%
+    filter(sig == "Up (FDR<0.05)") %>%
+    group_by(geology_class) %>%
+    arrange(p, desc(abs(lfc)), .by_group = TRUE) %>%
+    slice_head(n = 10) %>%
+    ungroup()
+
+# and tail
+tail_down <- ancombc2_geology_long_g %>%
+    filter(sig == "Down (FDR<0.05)") %>%
+    group_by(geology_class) %>%
+    arrange(logp, sort(lfc), .by_group = TRUE) %>%
+    slice_tail(n = 10) %>%   # take the “tail” 10 within the ordered list
+    ungroup()
+
+label_data_geology <- bind_rows(top_up,tail_down)
+
+# volcano plot
+ancombc2_geology_g <- ggplot() +
+    geom_point(ancombc2_geology_long_g, mapping = aes(x = lfc,
+                                              y = logp,
+                                              color=sig,
+                                              shape = sig,
+                                              size = n_samples), alpha = 0.7) +
+    geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +  # LFC guide
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +  # raw p=0.05 guide
+    geom_text_repel(
+                    data = label_data_geology,
+                    aes(x = lfc, y = logp,
+                        label = taxon, color = sig),
+                    size = 2.5,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.5,
+                    seed = 123                # reproducible placement
+                    ) +
+    facet_wrap(~ geology_class, nrow = 3, scales = "free_y") +
+    scale_color_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = "#D55E00",   # orange-red
+                                  "Down (FDR<0.05)" = "#0072B2", # blue
+                                  "NS" = "grey70"),
+                       guide="legend") +
+    scale_shape_manual(
+                       values = c(
+                                  "Up (FDR<0.05)" = 16,  # filled circle
+                                  "Down (FDR<0.05)" = 17, # triangle
+                                  "NS" = 1               # open circle
+                                  ),
+                       guide = "legend"
+                       ) +
+    scale_size_continuous(
+                           range = c(0.8, 3.5),                   # smaller overall point size range
+                           breaks = c(10, 20, 40, 80, 130),      # more granularity in legend
+                           guide = guide_legend(
+                                                title = "# samples",
+                                                title.position = "left",
+                                                override.aes = list(shape = 16),
+                                                keyheight = unit(3, "mm"),           # smaller legend keys
+                                                keywidth = unit(3, "mm"),
+                                                label.position = "right")
+                           ) +
+    guides(
+           color = guide_legend(title = "Significance", override.aes = list(shape = c(16, 17, 1))),
+           shape = "none"  # hide the second legend
+           ) +
+    labs(
+         x = "Log fold-change (lfc)",
+         y = expression(-log[10](p)),
+         shape = NULL,
+         #title = "Volcano plots by aridity class",
+         size = "# samples"
+         ) +
+    theme_bw() +
+    theme(
+          panel.grid = element_blank(),
+          strip.background = element_rect(fill = NA),
+          legend.position = "bottom")
+
+ggsave("figures/community_diffential_geology_class.png", 
+       plot=ancombc2_geology_g, 
+       height = 20, 
+       width = 30,
+       dpi = 300, 
+       units="cm",
+       device="png")
 
 ############################## 5. Functional profiles ############################
 ### function
