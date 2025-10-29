@@ -2400,6 +2400,7 @@ kruskal_g <- ggplot(kw_hm, aes(x = factor, y = variable, fill = logp)) +
                          breaks = pretty_breaks(n = 6)
                          ) +
     coord_fixed() +
+    coord_flip() +
     labs(x = "", y = "Community and Diveristy indices", title="Kruskal-Wallis rank sum test")+
     theme_bw() +
     theme(
@@ -2421,6 +2422,7 @@ permanova_g <- ggplot(permanova_results, aes(x = factor, y = R2, size = logp)) +
   geom_point(alpha = 0.8) +
   scale_size_continuous(name = "-log10(p_adj)") +
   labs(x = NULL, y = "Effect size (R²)", title = "PERMANOVA effects (R² vs significance)") +
+  coord_flip() +
   theme_bw() +
   theme(panel.grid.major.y = element_blank())+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -2428,8 +2430,8 @@ permanova_g <- ggplot(permanova_results, aes(x = factor, y = R2, size = logp)) +
 ggsave("figures/community_permanova_bubble_plot.png",
        plot=permanova_g,
        device="png",
-       height = 10,
-       width = 30,
+       height = 30,
+       width = 10,
        units="cm")
 
 figure_5 <- kruskal_g / permanova_g +
@@ -2438,7 +2440,7 @@ figure_5 <- kruskal_g / permanova_g +
   theme(plot.tag = element_text(size = 18),
         plot.background = element_rect(fill = "white", colour = NA))
 
-ggsave("figures/fig_isd_community_stats.png", 
+ggsave("figures/fig_isd_community_stats_a.png", 
        plot=figure_5, 
        height = 20, 
        width = 20,
@@ -3167,6 +3169,28 @@ ggsave("figures/community_diffential_geology_class.png",
        units="cm",
        device="png")
 
+
+figure_6 <- (
+  ancombc2_label2_g / ancombc2_esa_g +
+    plot_layout(heights = c(1, 1), guides = "collect") +   
+    plot_annotation(tag_levels = 'A')
+) &
+  theme(
+    plot.tag = element_text(size = 22),
+    plot.background = element_rect(fill = "white", colour = NA),
+    legend.position = "bottom"   
+  )
+
+
+ggsave("figures/fig_isd_differential_abundance.png", 
+       plot=figure_6, 
+       height = 30, 
+       width = 30,
+       dpi = 600, 
+       units="cm",
+       device="png")
+
+
 ############################## 5. Functional profiles ############################
 ### function
 print("4. Functional profiles")
@@ -3357,6 +3381,9 @@ ggsave("figures/faprotax_nitr_box.png",
        units="cm")
 
 
+
+
+
 ####################### faprotax maps ########################
 faprotax_functions <- unique(faprotax_l$group)
 
@@ -3404,5 +3431,68 @@ for (fun in faprotax_functions){
            device="png")
 }
 
+
+faprotax_loc <- faprotax_l %>%
+    filter(group %in% c("human_pathogens_all", "plant_pathogen","plastic_degradation")) %>%
+    left_join(locations_spatial, by=c("ENA_RUN"="ENA_RUN"))
+
+faprotax_l_4<- faprotax_loc %>% filter(value > 0.005)
+
+
+crete_function <- ggplot() +
+    geom_sf(crete_shp, mapping=aes()) +
+    geom_point(faprotax_l_4,
+            mapping=aes(x=longitude, y=latitude, color=group, size=value),
+            alpha=0.5,
+            show.legend=T) +
+    geom_text_repel(
+                    data = faprotax_l_4,
+                    aes(x = longitude, y = latitude,
+                        label = ENA_RUN, color = group),
+                    size = 3,
+                    show.legend = FALSE,
+                    force = 1,                # increase pushing force a bit
+                    max.overlaps = 40,        # allow ggrepel to drop labels if needed (lower = stricter)
+                    box.padding = 0.6,
+                    point.padding = 0.25,
+                    min.segment.length = 0,
+                    segment.alpha = 0.8,
+                    seed = 123                # reproducible placement
+                    ) +
+    scale_color_manual(values=c( "#D55E00" , "forestgreen"))+
+    guides(color= guide_legend("Relative abundance"), size=guide_legend("Relative abundance"))+
+    theme_bw() +
+    theme(axis.title=element_blank(),
+          panel.border = element_blank(),
+          panel.grid.major = element_blank(), #remove major gridlines
+          panel.grid.minor = element_blank(), #remove minor gridlines
+          line = element_blank(),
+          axis.text=element_blank(),
+          legend.text=element_text(size=5),
+          legend.title = element_text(size=5),
+          legend.position = "right")
+
+ggsave("figures/map_faprotax_health.png",
+       plot=crete_function,
+       height = 10,
+       width = 20,
+       dpi = 300,
+       units="cm",
+       device="png")
+
+
+figure_5a <- (kruskal_g | permanova_g ) / crete_function +
+  plot_layout(heights = c(1,0.8)) +
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag = element_text(size = 18),
+        plot.background = element_rect(fill = "white", colour = NA))
+
+ggsave("figures/fig_isd_community_stats.png", 
+       plot=figure_5a, 
+       height = 20, 
+       width = 25,
+       dpi = 600, 
+       units="cm",
+       device="png")
 
 print("all figures were generated")
