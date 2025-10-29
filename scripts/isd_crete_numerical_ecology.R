@@ -2,7 +2,7 @@
 
 ###############################################################################
 # script name: isd_crete_numerical_ecology.R
-# developed by: Savvas Paragkamian, Johanna Holms
+# developed by: Savvas Paragkamian, Johanna Holm
 # framework: ISD Crete
 ###############################################################################
 # GOAL:
@@ -25,11 +25,14 @@ library(terra)
 library(ape)
 library(dplyr)
 library(tibble)
+library(purrr)
+library(broom)
 library(readr)
 library(magrittr)
 library(tidyr)
 library(ggplot2)
 library(dendextend) 
+library(rstatix)
 
 ################################## Load data ##################################
 crete_biodiversity <- read_delim("results/crete_biodiversity_asv.tsv",delim="\t")
@@ -172,9 +175,10 @@ env_isd <- metadata %>%
     column_to_rownames(var="ENA_RUN")# %>%
 
 print("starting envfit")
-envfit_isd <- envfit(nmds_isd, env_isd, permutations = 999, na.rm=T) 
-env_scores_isd <- as.data.frame(scores(envfit_isd, display = "vectors"))
-write_delim(env_scores_isd,"results/env_scores_isd.tsv", delim="\t")
+
+#envfit_isd <- envfit(nmds_isd, env_isd, permutations = 999, na.rm=T) 
+#env_scores_isd <- as.data.frame(scores(envfit_isd, display = "vectors"))
+#write_delim(env_scores_isd,"results/env_scores_isd.tsv", delim="\t")
 
 # plotting
 png(file="figures/ordination_nmds_stressplot.png",
@@ -238,6 +242,7 @@ write_delim(nmds_isd_sites,"results/nmds_isd_sites.tsv", delim="\t")
 # performs the UMAP algorithm
 ################################# statistics ##########################
 
+print("starting umap")
 umap_isd_sites <- read_delim("results/umap_samples_2.tsv", delim="\t")
 #umap_isd_sites_k1 <- read_delim("results/umap_samples_1.tsv", delim="\t")
 #colnames(umap_isd_sites_k1) <- c("id", "UCIE")
@@ -251,83 +256,180 @@ metadata$elevation_bin <- factor(metadata$elevation_bin,
                         levels=unique(metadata$elevation_bin)[order(sort(unique(metadata$elevation_bin)))])
 
 ############################# Statistics ###############################
-##### regression
-## diversity
-cor.test(metadata$shannon, metadata$total_nitrogen)
-cor.test(metadata$shannon, metadata$carbon_nitrogen_ratio) 
 
-cor.test(metadata$shannon, metadata$elevation)
-cor.test(metadata$shannon, metadata$water_content) 
+#################################################################
+#-------------------- numerical variables ---------------------#
+#################################################################
 
-gradient_scatterplot(metadata, "total_organic_carbon","shannon", "elevation_bin") 
+numerical <- c("dem_crete",
+               "aridity",
+                "bio_1" , 
+                "bio_12",
+                "bio_13",
+                "bio_14",
+                "bio_15",
+                "bio_16",
+                "bio_17",
+                "bio_18",
+                "bio_19",
+                "bio_2",
+                "bio_3",
+                "bio_4",
+                "bio_5",
+                "bio_6",
+                "bio_7",
+                "bio_8",
+                "bio_9")
 
-####### Drivers numerical
-cor.test(metadata$shannon, metadata$total_nitrogen)
-cor.test(metadata$shannon, metadata$total_organic_carbon)
-cor.test(metadata$shannon, metadata$carbon_nitrogen_ratio)
-cor.test(metadata$shannon, metadata$water_content)
-cor.test(metadata$shannon, metadata$elevation)
-cor.test(metadata$shannon, metadata$aridity)
-cor.test(metadata$shannon, metadata$bio_1)
-cor.test(metadata$shannon, metadata$bio_12)
+numerical_p <- c("dem_crete",
+               "aridity",
+                "bio_1" , 
+                "bio_12")
 
-cor.test(metadata$shannon, metadata$UMAP1)
 
-lm_s <- lm(metadata$shannon ~ metadata$bio_1 + metadata$geology_na+ metadata$total_organic_carbon)
-summary(lm_s)
-anova(lm_s)
+#################################################################
+#-------------------- categorical variables ---------------------#
+#################################################################
 
-### drivers of major axis of ordination
-# first axis
-lm_o <- lm(metadata$UMAP1 ~ metadata$bio_1 + metadata$total_organic_carbon  + metadata$geology_na)
-summary(lm_o)
-anova(lm_o)
-cor.test(metadata$UMAP1, metadata$bio_1)
-gradient_scatterplot(metadata, "bio_1","UMAP1", "none") 
-gradient_scatterplot(metadata, "bio_12","UMAP1", "none") 
-gradient_scatterplot(metadata, "total_organic_carbon","UMAP1", "none") 
-gradient_scatterplot(metadata, "total_nitrogen","UMAP1", "none") 
-cor.test(metadata$UMAP1, metadata$bio_12)
-cor.test(metadata$UMAP1, metadata$total_organic_carbon)
-cor.test(metadata$UMAP1, metadata$total_nitrogen)
-kruskal.test(UMAP1 ~ LABEL3, data = metadata)  
-kruskal.test(UMAP1 ~ geology_na, data = metadata)  
+# colnames of the different map layers
+mapclasses <- c("elevation_bin",
+             "LABEL2",
+             "LABEL3",
+             "geology_na",
+             "HWSD2_value",
+             "ESA_12CL",
+             "aridity_class",
+             "hilda_name",
+             "erosion_g2",
+             "protection_status")
 
-boxplot_single(metadata, "UMAP1", "geology_na", "bio_1")
-# second axis
-lm_o2 <- lm(metadata$UMAP2 ~ metadata$total_organic_carbon + metadata$water_content)
-summary(lm_o2)
-anova(lm_o2)
-kruskal.test(UMAP2 ~ geology_na, data = metadata)
-kruskal.test(UMAP2 ~ elevation_bin, data = metadata)
-kruskal.test(UMAP2 ~ geology_na, data = metadata)
-kruskal.test(UMAP2 ~ LABEL3, data = metadata)  
+# colnames of the microbiome metrics
+variables <- c(
+               "shannon",
+               "S.chao1",
+               "Axis.1",
+               "Axis.2",
+               "UMAP1",
+               "UMAP2",
+               "NMDS1",
+               "NMDS2"
+)
 
-cor.test(metadata$UMAP2, metadata$total_organic_carbon)
-cor.test(metadata$UMAP2, metadata$total_nitrogen)
-cor.test(metadata$UMAP2, metadata$water_content)
-gradient_scatterplot(metadata, "water_content","UMAP2", "none") 
-gradient_scatterplot(metadata, "total_nitrogen","UMAP2", "none") 
-gradient_scatterplot(metadata, "total_organic_carbon","UMAP2", "none") 
-boxplot_single(metadata, "UMAP2","LABEL3", "total_organic_carbon")
+# Run all Kruskal–Wallis tests
+kw_results <- expand.grid(variable = variables, factor = mapclasses) %>% # create all possible combinations
+    mutate(
+           result = map2(variable, factor, ~ {
+                             formula <- as.formula(paste(.x, "~", .y))
+                             test <- try(kruskal.test(formula, data = metadata), silent = TRUE)
+                             if (inherits(test, "try-error")) return(NULL)
+                             broom::tidy(test)})) %>% 
+    tidyr::unnest(result)
 
-####### Drivers categorical
-kruskal.test(shannon ~ vegetation_zone, data = metadata)
-kruskal.test(shannon ~ elevation_bin, data = metadata)
-kruskal.test(shannon ~ aridity_class, data = metadata)
-kruskal.test(shannon ~ LABEL2, data = metadata)
-kruskal.test(shannon ~ LABEL3, data = metadata)
 
-pairwise.wilcox.test(metadata$shannon, metadata$LABEL3, p.adjust.method="BH")
+# Adjust p-values across all tests (BH), transform to -log10
+kw_hm <- kw_results |>
+    mutate(
+           p_adj = p.adjust(p.value, method = "BH"),
+           logp  = -log10(p_adj),
+           sig   = case_when(
+                             p_adj < 0.001 ~ "***",
+                             p_adj < 0.01  ~ "**",
+                             p_adj < 0.05  ~ "*",
+                             TRUE          ~ ""
+           ))
 
-kruskal.test(shannon ~ geology_na, data = metadata)
-pairwise.wilcox.test(metadata$shannon, metadata$geology_na, p.adjust.method="BH")
+write_delim(kw_hm, "results/stats_maps_kw.tsv", delim="\t")
+
+##################### Run all PERMANOVA tests ###################
+# bray <- vegdist(comm, method = "bray")
+#
+idx <- which(!is.na(metadata$erosion_g2))
+bc_sub <- as.dist(as.matrix(bray)[idx, idx])   # convert to matrix, subset rows+cols, back to dist
+meta_sub <- metadata[idx, , drop = FALSE]
+
+erosion_p <- adonis2(bc_sub ~ erosion_g2, data=meta_sub, permutations = 9999, by = "margin")
+
+erosion_t <- as_tibble(erosion_p, rownames = "term") |>
+        filter(term == "erosion_g2") |>
+        transmute(
+          factor    = "erosion_g2",
+          Df        = Df,
+          F         = `F`,
+          R2        = R2,
+          p.value   = `Pr(>F)`
+        ) |>
+        mutate(mapclass="erosion_g2")
+
+# permanova in numerical
+permanova_results_n <- tibble(mapclass = numerical_p) %>%
+  mutate(
+    res = map(mapclass, ~ {
+      fml <- as.formula(paste0("bray ~ ", .x))
+      fit <- adonis2(fml, data = metadata, permutations = 9999, by = "margin")
+      as_tibble(fit, rownames = "term") |>
+        filter(term == .x) |>
+        transmute(
+          factor    = .x,
+          Df        = Df,
+          F         = `F`,
+          R2        = R2,
+          p.value   = `Pr(>F)`
+        )
+    })
+  ) %>%
+  unnest(res) 
+
+
+
+
+# erosion has NA so i have to handle it differently
+mapclasses_p <- mapclasses[mapclasses != "erosion_g2"]
+
+permanova_results <- tibble(mapclass = mapclasses_p) %>%
+  mutate(
+    res = map(mapclass, ~ {
+      fml <- as.formula(paste0("bray ~ ", .x))
+      fit <- adonis2(fml, data = metadata, permutations = 9999, by = "margin")
+      as_tibble(fit, rownames = "term") |>
+        filter(term == .x) |>
+        transmute(
+          factor    = .x,
+          Df        = Df,
+          F         = `F`,
+          R2        = R2,
+          p.value   = `Pr(>F)`
+        )
+    })
+  ) %>%
+  unnest(res) %>%
+  bind_rows(erosion_t) %>%
+  bind_rows(permanova_results_n) %>%
+  mutate(
+    p_adj = p.adjust(p.value, method = "BH"),
+    logp  = -log10(p_adj),
+    sig   = case_when(
+      p_adj < 0.001 ~ "***",
+      p_adj < 0.01  ~ "**",
+      p_adj < 0.05  ~ "*",
+      TRUE          ~ ""
+    )
+  ) %>%
+  arrange(p_adj)
+
+write_delim(permanova_results, "results/stats_permanova_results.tsv", delim="\t")
+
+ggplot(permanova_results, aes(x = factor, y = R2, size = logp)) +
+  geom_point(alpha = 0.8) +
+  scale_size_continuous(name = "-log10(p_adj)") +
+  labs(x = NULL, y = "Effect size (R²)", title = "PERMANOVA effects (R² vs significance)") +
+  theme_bw(base_size = 12) +
+  theme(panel.grid.major.y = element_blank())+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 
 ########### community dissimilarity tests #############
 # calculate the bray dissimilatiry
-bray <- vegdist(community_matrix)
 
-# geology
 
 # multivariate dispersion (variance) for a group of samples is to calculate
 # the average distance of group members to the group centroid or spatial
@@ -446,79 +548,11 @@ plot(mod.HSD)
 dev.off()
 
 
-#### permanova
-
-#adonis_elevation <- adonis2(community_matrix ~ elevation_bin, data=metadata_f, permutations=99)
-
-adonis_multiple <- adonis2(community_matrix ~ bio_1*bio_12*elevation_bin*total_nitrogen*geology_na*LABEL3*carbon_nitrogen_ratio,
-                           data=metadata,
-                           permutations=999)
-
-
-############################## Community analysis ###########################
-###################### Co-occurrence of samples and ASVs ####################
-print("starting co-occurrence")
-
-#biodiversity_m <- biodiversity_srs
-#biodiversity_m[biodiversity_m > 0 ] <- 1
-#biodiversity_m <- as.matrix(biodiversity_m)
-
-## matrix multiplication takes up a lot of memory and CPU, I had an error
-## Error: vector memory exhausted (limit reached?)
-## cd ~ ; touch .Renviron 
-## echo R_MAX_VSIZE=200Gb >> .Renviron
-
-#asv_cooccur <- biodiversity_m %*% t(biodiversity_m)
-#community_matrix_m <- community_matrix
-#community_matrix_m[community_matrix_m > 0] <- 1
-#community_matrix_m <- as.matrix(community_matrix_m)
-
-#sample_cooccur <- community_matrix_m %*% t(community_matrix_m)
-#taxa_cooccur <- t(community_matrix_m) %*% community_matrix_m
-
-#isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
-#taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
-
-#taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
-#    filter(rowname!=colname) %>%
-#    na.omit()
-
-#write_delim(taxa_cooccur_l,"results/taxa_cooccur_l.tsv", delim="\t")
-
-#isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
-#sample_cooccur[lower.tri(sample_cooccur)] <- NA
-
-#sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
-#    filter(rowname!=colname) %>%
-#    na.omit() %>% 
-#    left_join(bray_l,
-#              by=c("rowname"="rowname", "colname"="colname")) %>%
-#    left_join(jaccard_l,
-#              by=c("rowname"="rowname", "colname"="colname")) %>%
-#    left_join(aitchison_l,
-#              by=c("rowname"="rowname", "colname"="colname"))
-
-
-#write_delim(sample_cooccur_l,"results/sample_cooccur_l.tsv", delim="\t")
-
-
-######################## Site locations comparison ASV #################
-#samples_locations <- metadata %>%
-#    pivot_wider(id_cols=sites,
-#                names_from=location,
-#                values_from=ENA_RUN)
-#
-#
-#dissi_loc <- samples_locations %>%
-#    left_join(sample_cooccur_l,
-#              by=c("loc_1"="rowname", "loc_2"="colname"))
-#
-#summary(dissi_loc)
-#
 ########################################################################
 ###########------- Spatial Summary Table ------------- #################
 ########################################################################
 
+print("spatial summary table")
 ##  load map data
 crete_shp <- sf::st_read("spatial_data/crete/crete.shp")
 
@@ -782,3 +816,63 @@ write_delim(area_total, "results/data_cube_summary_table.tsv", delim="\t")
 #area_total |> arrange(category, class, area) |> kbl() |> kable_styling(latex_options = "scale_down")
 
 print("finish")
+
+############################## Community analysis ###########################
+###################### Co-occurrence of samples and ASVs ####################
+#print("starting co-occurrence")
+
+#biodiversity_m <- biodiversity_srs
+#biodiversity_m[biodiversity_m > 0 ] <- 1
+#biodiversity_m <- as.matrix(biodiversity_m)
+
+## matrix multiplication takes up a lot of memory and CPU, I had an error
+## Error: vector memory exhausted (limit reached?)
+## cd ~ ; touch .Renviron 
+## echo R_MAX_VSIZE=200Gb >> .Renviron
+
+#asv_cooccur <- biodiversity_m %*% t(biodiversity_m)
+#community_matrix_m <- community_matrix
+#community_matrix_m[community_matrix_m > 0] <- 1
+#community_matrix_m <- as.matrix(community_matrix_m)
+
+#sample_cooccur <- community_matrix_m %*% t(community_matrix_m)
+#taxa_cooccur <- t(community_matrix_m) %*% community_matrix_m
+
+#isSymmetric(taxa_cooccur) # is true so we can remove the lower triangle
+#taxa_cooccur[lower.tri(taxa_cooccur)] <- NA
+
+#taxa_cooccur_l <- dist_long(taxa_cooccur,"cooccurrence") %>%
+#    filter(rowname!=colname) %>%
+#    na.omit()
+
+#write_delim(taxa_cooccur_l,"results/taxa_cooccur_l.tsv", delim="\t")
+
+#isSymmetric(sample_cooccur) # is true so we can remove the lower triangle
+#sample_cooccur[lower.tri(sample_cooccur)] <- NA
+
+#sample_cooccur_l <- dist_long(sample_cooccur,"cooccurrence") %>%
+#    filter(rowname!=colname) %>%
+#    na.omit() %>% 
+#    left_join(bray_l,
+#              by=c("rowname"="rowname", "colname"="colname")) %>%
+#    left_join(jaccard_l,
+#              by=c("rowname"="rowname", "colname"="colname")) %>%
+#    left_join(aitchison_l,
+#              by=c("rowname"="rowname", "colname"="colname"))
+
+
+#write_delim(sample_cooccur_l,"results/sample_cooccur_l.tsv", delim="\t")
+
+
+######################## Site locations comparison ASV #################
+#samples_locations <- metadata %>%
+#    pivot_wider(id_cols=sites,
+#                names_from=location,
+#                values_from=ENA_RUN)
+#
+#
+#dissi_loc <- samples_locations %>%
+#    left_join(sample_cooccur_l,
+#              by=c("loc_1"="rowname", "loc_2"="colname"))
+#
+#summary(dissi_loc)
