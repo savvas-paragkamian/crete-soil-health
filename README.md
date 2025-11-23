@@ -1,4 +1,6 @@
-# ISD - Island Sampling Day Crete 2016
+# Soil Health Assessment of the Island Landscapes of Crete
+
+ISD - Island Sampling Day Crete 2016
 
 This repository contains the scripts for the analysis of the ISD Crete 2016.
 ISD Crete 2016 is a soil microbiome sampling from 72 distinct sites around 

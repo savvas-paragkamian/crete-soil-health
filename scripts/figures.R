@@ -2834,8 +2834,8 @@ ancombc2_label2_g <- ggplot() +
     facet_wrap(~ label2_class, nrow = 3, scales = "free_y") +
     scale_color_manual(
                        values = c(
-                                  "Up (FDR<0.05)" = "#D55E00",   # orange-red
-                                  "Down (FDR<0.05)" = "#0072B2", # blue
+                                  "Up (FDR<0.05)" = "forestgreen",   #
+                                  "Down (FDR<0.05)" = "#440154", # 
                                   "NS" = "grey70"),
                        guide="legend") +
     scale_shape_manual(
