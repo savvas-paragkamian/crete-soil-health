@@ -418,15 +418,6 @@ permanova_results <- tibble(mapclass = mapclasses_p) %>%
 
 write_delim(permanova_results, "results/stats_permanova_results.tsv", delim="\t")
 
-ggplot(permanova_results, aes(x = factor, y = R2, size = logp)) +
-  geom_point(alpha = 0.8) +
-  scale_size_continuous(name = "-log10(p_adj)") +
-  labs(x = NULL, y = "Effect size (R²)", title = "PERMANOVA effects (R² vs significance)") +
-  theme_bw(base_size = 12) +
-  theme(panel.grid.major.y = element_blank())+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-
 ########### community dissimilarity tests #############
 # calculate the bray dissimilatiry
 
